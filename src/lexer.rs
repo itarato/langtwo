@@ -19,16 +19,42 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn parse(reader: Box<dyn SourceReader<'a>>) -> Result<Vec<Lexeme<'a>>, Error> {
-        let lexer = Lexer::new(reader);
-        lexer.read_any()
-    }
-
-    fn new(reader: Box<dyn SourceReader<'a>>) -> Lexer<'a> {
+    pub fn new(reader: Box<dyn SourceReader<'a>>) -> Lexer<'a> {
         Lexer { reader }
     }
 
-    fn read_any(&self) -> Result<Vec<Lexeme<'a>>, Error> {
-        Ok(vec![Lexeme::Fn])
+    pub fn read_any(&'a mut self) -> Result<Vec<Lexeme<'a>>, Error> {
+        let mut lexemes = vec![];
+
+        loop {
+            {
+                self.consume_whitespace();
+            }
+
+            let c;
+            {
+                let peek = self.reader.peek();
+                if peek.is_none() {
+                    break;
+                }
+                c = peek.unwrap();
+            }
+            let lexeme = match c {
+                // '0'..='9' => self.read_number()?,
+                _ => return Err(format!("Invalid char during lexing: {}", c).into()),
+            };
+
+            lexemes.push(lexeme);
+        }
+
+        Ok(lexemes)
+    }
+
+    fn consume_whitespace(&'a mut self) {
+        let _ = self.reader.read_until(|c| c == ' ');
+    }
+
+    fn read_number(&self) -> Result<Lexeme<'a>, Error> {
+        unimplemented!()
     }
 }

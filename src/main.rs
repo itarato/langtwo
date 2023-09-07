@@ -15,5 +15,5 @@ fn main() {
     sayhi();
 "#,
     ));
-    let lex_result = Lexer::parse(reader);
+    let lex_result = Lexer::new(reader).read_any();
 }
