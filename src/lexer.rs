@@ -48,6 +48,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_number(&self) -> Result<Lexeme<'a>, Error> {
-        unimplemented!()
+        self.reader
+            .read_until(|c| c >= '0' && c <= '9')
+            .map(|slice| {})
     }
 }
