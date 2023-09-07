@@ -1,10 +1,11 @@
-pub trait SourceReader {
+pub trait SourceReader<'a> {
     fn is_eof(&self) -> bool;
     fn peek(&self) -> Option<char>;
     fn next(&mut self) -> Option<char>;
-    fn read_until(&mut self, cond: fn(char) -> bool) -> Option<&str>;
+    fn read_until(&'a mut self, cond: fn(char) -> bool) -> Option<&'a str>;
 }
 
+#[derive(Debug)]
 pub struct StrReader<'a> {
     ptr: usize,
     source: &'a str,
@@ -16,7 +17,7 @@ impl<'a> StrReader<'a> {
     }
 }
 
-impl<'a> SourceReader for StrReader<'a> {
+impl<'a> SourceReader<'a> for StrReader<'a> {
     fn is_eof(&self) -> bool {
         self.ptr >= self.source.len()
     }
@@ -31,7 +32,7 @@ impl<'a> SourceReader for StrReader<'a> {
         out
     }
 
-    fn read_until(&mut self, cond: fn(char) -> bool) -> Option<&str> {
+    fn read_until(&mut self, cond: fn(char) -> bool) -> Option<&'a str> {
         let i = self.ptr;
 
         loop {
