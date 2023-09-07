@@ -2,7 +2,7 @@ pub trait SourceReader<'a> {
     fn is_eof(&self) -> bool;
     fn peek(&self) -> Option<char>;
     fn next(&mut self) -> Option<char>;
-    fn read_until(&'a mut self, cond: fn(char) -> bool) -> Option<&'a str>;
+    fn read_until(&mut self, cond: fn(char) -> bool) -> Option<&'a str>;
 }
 
 #[derive(Debug)]
