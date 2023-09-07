@@ -27,21 +27,14 @@ impl<'a> Lexer<'a> {
         let mut lexemes = vec![];
 
         loop {
-            {
-                self.consume_whitespace();
-            }
+            self.consume_whitespace();
 
-            let c;
-            {
-                let peek = self.reader.peek();
-                if peek.is_none() {
-                    break;
-                }
-                c = peek.unwrap();
-            }
-            let lexeme = match c {
-                // '0'..='9' => self.read_number()?,
-                _ => return Err(format!("Invalid char during lexing: {}", c).into()),
+            let lexeme = match self.reader.peek() {
+                None => break,
+                Some(c) => match c {
+                    '0'..='9' => self.read_number()?,
+                    _ => return Err(format!("Invalid char during lexing: {}", c).into()),
+                },
             };
 
             lexemes.push(lexeme);
