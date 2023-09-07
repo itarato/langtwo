@@ -23,7 +23,7 @@ impl<'a> Lexer<'a> {
         Lexer { reader }
     }
 
-    pub fn read_any(&'a mut self) -> Result<Vec<Lexeme<'a>>, Error> {
+    pub fn read_any(&mut self) -> Result<Vec<Lexeme<'a>>, Error> {
         let mut lexemes = vec![];
 
         loop {
@@ -50,7 +50,7 @@ impl<'a> Lexer<'a> {
         Ok(lexemes)
     }
 
-    fn consume_whitespace(&'a mut self) {
+    fn consume_whitespace(&mut self) {
         let _ = self.reader.read_until(|c| c == ' ');
     }
 
