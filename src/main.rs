@@ -16,4 +16,5 @@ fn main() {
 "#,
     ));
     let lex_result = Lexer::new(reader).read_any();
+    dbg!(lex_result);
 }

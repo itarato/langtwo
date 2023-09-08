@@ -33,7 +33,7 @@ impl<'a> SourceReader<'a> for StrReader<'a> {
     }
 
     fn read_until(&mut self, cond: fn(char) -> bool) -> Option<&'a str> {
-        let i = self.ptr;
+        let i = self.ptr as i64;
 
         loop {
             match self.peek() {
@@ -48,9 +48,9 @@ impl<'a> SourceReader<'a> for StrReader<'a> {
             };
         }
 
-        let j = self.ptr - 1;
+        let j = self.ptr as i64 - 1;
         if j >= i {
-            Some(&self.source[i..j])
+            Some(&self.source[(i as usize)..=(j as usize)])
         } else {
             None
         }

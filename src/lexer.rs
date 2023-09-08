@@ -35,11 +35,26 @@ impl<'a> Lexer<'a> {
                     '0'..='9' => self.read_number()?,
                     'a'..='z' => self.read_name()?,
                     '"' => self.read_string()?,
-                    '(' => Lexeme::ParenOpen,
-                    ')' => Lexeme::ParenClose,
-                    ';' => Lexeme::Semicolon,
-                    '{' => Lexeme::BraceOpen,
-                    '}' => Lexeme::BraceClose,
+                    '(' => {
+                        self.reader.next();
+                        Lexeme::ParenOpen
+                    }
+                    ')' => {
+                        self.reader.next();
+                        Lexeme::ParenClose
+                    }
+                    ';' => {
+                        self.reader.next();
+                        Lexeme::Semicolon
+                    }
+                    '{' => {
+                        self.reader.next();
+                        Lexeme::BraceOpen
+                    }
+                    '}' => {
+                        self.reader.next();
+                        Lexeme::BraceClose
+                    }
                     _ => return Err(format!("Invalid char during lexing: {}", c).into()),
                 },
             };
@@ -51,7 +66,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn consume_whitespace(&mut self) {
-        let _ = self.reader.read_until(|c| c == ' ');
+        let _ = self.reader.read_until(|c| c.is_whitespace());
     }
 
     fn read_number(&mut self) -> Result<Lexeme<'a>, Error> {
