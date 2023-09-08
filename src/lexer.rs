@@ -1,7 +1,7 @@
 use crate::shared::*;
 use crate::source_reader::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Lexeme<'a> {
     Name(&'a str),
     Int(i32),
@@ -71,7 +71,7 @@ impl<'a> Lexer<'a> {
 
     fn read_number(&mut self) -> Result<Lexeme<'a>, Error> {
         self.reader
-            .read_until(|c| c >= '0' && c <= '9')
+            .read_until(|c| c.is_ascii_digit())
             .ok_or("Empty number".into())
             .and_then(|slice| {
                 i32::from_str_radix(slice, 10)
@@ -82,7 +82,7 @@ impl<'a> Lexer<'a> {
 
     fn read_name(&mut self) -> Result<Lexeme<'a>, Error> {
         self.reader
-            .read_until(|c| c >= 'a' && c <= 'z')
+            .read_until(|c| c.is_ascii_alphanumeric())
             .ok_or("Empty name".into())
             .map(|slice| match slice {
                 "fn" => Lexeme::Fn,
@@ -102,5 +102,85 @@ impl<'a> Lexer<'a> {
         }
 
         Ok(Lexeme::Str(str))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::lexer::*;
+
+    #[test]
+    fn test_empty_input() {
+        assert!(lex_these("").unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_name() {
+        assert_eq!(vec![Lexeme::Name("hi")], lex_these("\thi \n").unwrap());
+    }
+
+    #[test]
+    fn test_int() {
+        assert_eq!(vec![Lexeme::Int(1024)], lex_these("\t1024 \n").unwrap());
+    }
+
+    #[test]
+    fn test_str() {
+        assert_eq!(
+            vec![Lexeme::Str("bla blu")],
+            lex_these("\t\"bla blu\" \n").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_fn() {
+        assert_eq!(vec![Lexeme::Fn], lex_these("\tfn \n").unwrap());
+    }
+
+    #[test]
+    fn test_paren_open() {
+        assert_eq!(vec![Lexeme::ParenOpen], lex_these("\t( \n").unwrap());
+    }
+
+    #[test]
+    fn test_paren_close() {
+        assert_eq!(vec![Lexeme::ParenClose], lex_these("\t) \n").unwrap());
+    }
+
+    #[test]
+    fn test_brace_open() {
+        assert_eq!(vec![Lexeme::BraceOpen], lex_these("\t{ \n").unwrap());
+    }
+
+    #[test]
+    fn test_brace_close() {
+        assert_eq!(vec![Lexeme::BraceClose], lex_these("\t} \n").unwrap());
+    }
+
+    #[test]
+    fn test_semicolon() {
+        assert_eq!(vec![Lexeme::Semicolon], lex_these("\t; \n").unwrap());
+    }
+
+    #[test]
+    fn test_messy_mix() {
+        assert_eq!(
+            vec![
+                Lexeme::Name("hello"),
+                Lexeme::Int(123),
+                Lexeme::Fn,
+                Lexeme::ParenOpen,
+                Lexeme::ParenClose,
+                Lexeme::BraceOpen,
+                Lexeme::BraceClose,
+                Lexeme::Str("no")
+            ],
+            lex_these("\thello 123     fn(){}\"no\"\n").unwrap()
+        );
+    }
+
+    fn lex_these(input: &'static str) -> Result<Vec<Lexeme>, Error> {
+        let reader = Box::new(StrReader::new(input));
+        Lexer::new(reader).read_any()
     }
 }
