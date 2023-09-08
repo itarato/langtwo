@@ -56,3 +56,54 @@ impl<'a> SourceReader<'a> for StrReader<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::source_reader::*;
+
+    #[test]
+    fn test_is_eof() {
+        let mut reader = StrReader::new("12");
+        assert!(!reader.is_eof());
+
+        assert_eq!(Some('1'), reader.next());
+        assert_eq!(Some('2'), reader.next());
+
+        assert!(reader.is_eof());
+
+        assert_eq!(None, reader.next());
+        assert_eq!(None, reader.next());
+
+        assert!(reader.is_eof());
+    }
+
+    #[test]
+    fn test_peek() {
+        let mut reader = StrReader::new("12");
+
+        assert_eq!(Some('1'), reader.peek());
+        assert_eq!(Some('1'), reader.next());
+        assert_eq!(Some('2'), reader.peek());
+    }
+
+    #[test]
+    fn test_next() {
+        let mut reader = StrReader::new("12");
+
+        assert_eq!(Some('1'), reader.next());
+        assert_eq!(Some('2'), reader.next());
+        assert_eq!(None, reader.next());
+    }
+
+    #[test]
+    fn test_read_until() {
+        let mut reader = StrReader::new("12345abc");
+        assert_eq!(Some("12345"), reader.read_until(|c| c.is_ascii_digit()));
+    }
+
+    #[test]
+    fn test_read_until_at_end() {
+        let mut reader = StrReader::new("12345");
+        assert_eq!(Some("12345"), reader.read_until(|c| c.is_ascii_digit()));
+    }
+}
