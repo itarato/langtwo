@@ -33,6 +33,13 @@ impl<'a> Lexer<'a> {
                 None => break,
                 Some(c) => match c {
                     '0'..='9' => self.read_number()?,
+                    'a'..='z' => self.read_name()?,
+                    '"' => self.read_string()?,
+                    '(' => Lexeme::ParenOpen,
+                    ')' => Lexeme::ParenClose,
+                    ';' => Lexeme::Semicolon,
+                    '{' => Lexeme::BraceOpen,
+                    '}' => Lexeme::BraceClose,
                     _ => return Err(format!("Invalid char during lexing: {}", c).into()),
                 },
             };
@@ -47,9 +54,38 @@ impl<'a> Lexer<'a> {
         let _ = self.reader.read_until(|c| c == ' ');
     }
 
-    fn read_number(&self) -> Result<Lexeme<'a>, Error> {
+    fn read_number(&mut self) -> Result<Lexeme<'a>, Error> {
         self.reader
             .read_until(|c| c >= '0' && c <= '9')
-            .map(|slice| {})
+            .ok_or("Empty number".into())
+            .and_then(|slice| {
+                i32::from_str_radix(slice, 10)
+                    .map(|num| Lexeme::Int(num))
+                    .map_err(|_| "Failed converting string to number".into())
+            })
+    }
+
+    fn read_name(&mut self) -> Result<Lexeme<'a>, Error> {
+        self.reader
+            .read_until(|c| c >= 'a' && c <= 'z')
+            .ok_or("Empty name".into())
+            .map(|slice| match slice {
+                "fn" => Lexeme::Fn,
+                _ => Lexeme::Name(slice),
+            })
+    }
+
+    fn read_string(&mut self) -> Result<Lexeme<'a>, Error> {
+        if self.reader.next() != Some('"') {
+            return Err("String must start with \"".into());
+        }
+
+        let str = self.reader.read_until(|c| c != '"').unwrap_or("");
+
+        if self.reader.next() != Some('"') {
+            return Err("String must end with \"".into());
+        }
+
+        Ok(Lexeme::Str(str))
     }
 }
