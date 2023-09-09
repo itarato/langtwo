@@ -23,11 +23,12 @@ fn main() {
         r#"
     fn sayhello(x) {
         print("Hello ");
-        say(x);
+        say(x, 111);
     }
 
-    fn say(word) {
+    fn say(word, another) {
         print(word);
+        print(another);
     }
 
     fn printnum() {
