@@ -7,15 +7,28 @@ macro_rules! assert_lexeme {
     ($self:ident, $lex:pat, $msg:expr) => {
         match $self.pop() {
             Some($lex) => {}
-            _ => return Err($msg.into()),
+            _ => {
+                return {
+                    let full_msg = format!(
+                        "{} | Ptr: {} | Rest lexemes: {:?} | Line: {}",
+                        $msg,
+                        $self.ptr,
+                        $self.lexemes,
+                        line!()
+                    );
+                    Err(full_msg.into())
+                }
+            }
         };
     };
 }
 
+#[derive(Debug)]
 pub struct AstProgram<'s> {
     statements: Vec<AstStatement<'s>>,
 }
 
+#[derive(Debug)]
 pub enum AstStatement<'s> {
     FnDef {
         name: &'s str,
@@ -24,12 +37,17 @@ pub enum AstStatement<'s> {
     BlockLine(AstBlockLine<'s>),
 }
 
+#[derive(Debug)]
 pub enum AstBlockLine<'s> {
     Expr(AstExpr<'s>),
 }
 
+#[derive(Debug)]
 pub enum AstExpr<'s> {
-    FnCall(Vec<AstExpr<'s>>),
+    FnCall {
+        name: &'s str,
+        args: Vec<AstExpr<'s>>,
+    },
     Str(&'s str),
     Int(i32),
 }
@@ -45,6 +63,8 @@ impl<'s> Parser<'s> {
     }
 
     pub fn build_ast(&mut self) -> Result<AstProgram<'s>, Error> {
+        debug!("Build: program");
+
         let mut statements = vec![];
 
         loop {
@@ -60,6 +80,8 @@ impl<'s> Parser<'s> {
     }
 
     fn build_statement(&mut self) -> Result<AstStatement<'s>, Error> {
+        debug!("Build: statement");
+
         match self.peek() {
             Some(&Lexeme::Fn) => self.build_fn_def(),
             Some(_) => Ok(AstStatement::BlockLine(self.build_block_line()?)),
@@ -68,6 +90,8 @@ impl<'s> Parser<'s> {
     }
 
     fn build_fn_def(&mut self) -> Result<AstStatement<'s>, Error> {
+        debug!("Build: fn def");
+
         assert_lexeme!(self, Lexeme::Fn, "Expected Fn lexeme");
 
         let name = match self.pop() {
@@ -95,6 +119,8 @@ impl<'s> Parser<'s> {
     }
 
     fn build_block_line(&mut self) -> Result<AstBlockLine<'s>, Error> {
+        debug!("Build: block line");
+
         let expr = AstBlockLine::Expr(self.build_expr(|lexeme| match lexeme {
             Some(&Lexeme::Semicolon) => true,
             _ => false,
@@ -106,6 +132,8 @@ impl<'s> Parser<'s> {
     }
 
     fn build_expr(&mut self, until: fn(Option<&Lexeme>) -> bool) -> Result<AstExpr<'s>, Error> {
+        debug!("Build: expr");
+
         match self.peek() {
             Some(Lexeme::Int(_)) => self.build_expr_int(),
             Some(Lexeme::Str(_)) => self.build_expr_str(),
@@ -115,6 +143,8 @@ impl<'s> Parser<'s> {
     }
 
     fn build_expr_int(&mut self) -> Result<AstExpr<'s>, Error> {
+        debug!("Build: expr/int");
+
         match self.pop() {
             Some(Lexeme::Int(n)) => Ok(AstExpr::Int(n)),
             _ => Err("Expected integer".into()),
@@ -122,6 +152,8 @@ impl<'s> Parser<'s> {
     }
 
     fn build_expr_str(&mut self) -> Result<AstExpr<'s>, Error> {
+        debug!("Build: expr/str");
+
         match self.pop() {
             Some(Lexeme::Str(s)) => Ok(AstExpr::Str(s)),
             _ => Err("Expected string".into()),
@@ -129,6 +161,8 @@ impl<'s> Parser<'s> {
     }
 
     fn build_expr_fn_call(&mut self) -> Result<AstExpr<'s>, Error> {
+        debug!("Build: expr/fn-call");
+
         let name = match self.pop() {
             Some(Lexeme::Name(name)) => name,
             _ => return Err("Expected name".into()),
@@ -158,9 +192,9 @@ impl<'s> Parser<'s> {
             }
         }
 
-        assert_lexeme!(self, Lexeme::ParenOpen, "Expected paren close");
+        assert_lexeme!(self, Lexeme::ParenClose, "Expected paren close");
 
-        Ok(AstExpr::FnCall(args))
+        Ok(AstExpr::FnCall { name, args })
     }
 
     fn is_end(&self) -> bool {
