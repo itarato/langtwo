@@ -222,6 +222,7 @@ impl<'s> Parser<'s> {
 
 #[cfg(test)]
 mod test {
+    use crate::ast::*;
     use crate::lexer::*;
     use crate::parser::*;
     use crate::source_reader::*;
@@ -239,6 +240,11 @@ mod test {
             fn main(word, second) {
                 print(word);
                 print(second);
+                print(fixed());
+            }
+
+            fn fixed() {
+                123;
             }
 
             main(123, "hello");
