@@ -18,7 +18,7 @@ impl<'s> Scope<'s> {
 }
 
 #[derive(Debug, Clone)]
-enum ExprResult {
+pub enum ExprResult {
     Int(i32),
     Str(String),
     Null,
@@ -37,19 +37,20 @@ impl<'s> Interpreter<'s> {
         }
     }
 
-    pub fn interpret(&mut self, program: AstProgram<'s>) -> Result<(), Error> {
+    pub fn interpret(&mut self, program: AstProgram<'s>) -> Result<Option<ExprResult>, Error> {
+        let mut last_result = None;
         for statement in program.statements {
             match statement {
                 AstStatement::FnDef { name, args, block } => {
                     self.interpret_fn_def(name, args, block)
                 }
                 AstStatement::BlockLine(line) => {
-                    self.interpret_block_line(line)?;
+                    last_result = self.interpret_block_line(line)?;
                 }
             };
         }
 
-        Ok(())
+        Ok(last_result)
     }
 
     fn interpret_fn_def(

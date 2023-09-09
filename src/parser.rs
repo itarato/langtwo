@@ -240,6 +240,7 @@ mod test {
                 print(word);
                 print(second);
                 print(fixed());
+                fixed();
             }
 
             fn fixed() {
