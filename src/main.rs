@@ -21,11 +21,16 @@ fn main() {
 
     let reader = Box::new(StrReader::new(
         r#"
-    fn sayhi() {
-        print("Hi");
+    fn sayhello() {
+        print("Hello ");
+        sayworld();
     }
 
-    sayhi();
+    fn sayworld() {
+        print("World!");
+    }
+
+    sayhello();
 "#,
     ));
     let lex_result = Lexer::new(reader).read_any();
@@ -36,5 +41,6 @@ fn main() {
     dbg!(&ast_root);
 
     let mut interpreter = Interpreter::new();
-    interpreter.interpret(ast_root.unwrap());
+    let interpret_result = interpreter.interpret(ast_root.unwrap());
+    dbg!(interpret_result);
 }

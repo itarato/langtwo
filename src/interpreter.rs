@@ -33,15 +33,17 @@ impl<'s> Interpreter<'s> {
         }
     }
 
-    pub fn interpret(&mut self, program: AstProgram<'s>) {
+    pub fn interpret(&mut self, program: AstProgram<'s>) -> Result<(), Error> {
         for statement in program.statements {
             match statement {
                 AstStatement::FnDef { name, block } => self.interpret_fn_def(name, block),
                 AstStatement::BlockLine(line) => {
-                    let _result = self.interpret_block_line(line);
+                    self.interpret_block_line(line)?;
                 }
             };
         }
+
+        Ok(())
     }
 
     fn interpret_fn_def(&mut self, name: &'s str, block: Vec<AstBlockLine<'s>>) {
