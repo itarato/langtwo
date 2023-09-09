@@ -79,7 +79,7 @@ impl<'s> Interpreter<'s> {
             AstExpr::Name(name) => self.variable_get(name),
             AstExpr::Assignment { varname, expr } => {
                 let result = self.interpret_expr(*expr)?;
-                self.variable_set(varname, result.clone());
+                self.variable_set(varname, result.clone())?;
                 Ok(result)
             }
         }
