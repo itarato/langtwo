@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use crate::ast::*;
 use crate::lexer::*;
 use crate::shared::*;
 
@@ -21,35 +22,6 @@ macro_rules! assert_lexeme {
             }
         };
     };
-}
-
-#[derive(Debug)]
-pub struct AstProgram<'s> {
-    statements: Vec<AstStatement<'s>>,
-}
-
-#[derive(Debug)]
-pub enum AstStatement<'s> {
-    FnDef {
-        name: &'s str,
-        block: Vec<AstBlockLine<'s>>,
-    },
-    BlockLine(AstBlockLine<'s>),
-}
-
-#[derive(Debug)]
-pub enum AstBlockLine<'s> {
-    Expr(AstExpr<'s>),
-}
-
-#[derive(Debug)]
-pub enum AstExpr<'s> {
-    FnCall {
-        name: &'s str,
-        args: Vec<AstExpr<'s>>,
-    },
-    Str(&'s str),
-    Int(i32),
 }
 
 pub struct Parser<'s> {
