@@ -37,7 +37,8 @@ fn main() {
     }
 
     fn return() {
-        "world!";
+        a = "world!";
+        a;
     }
 
     fn fixed() {

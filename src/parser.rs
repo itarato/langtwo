@@ -125,7 +125,7 @@ impl<'s> Parser<'s> {
         Ok(expr)
     }
 
-    fn build_expr(&mut self, _until: fn(Option<&Lexeme>) -> bool) -> Result<AstExpr<'s>, Error> {
+    fn build_expr(&mut self, until: fn(Option<&Lexeme>) -> bool) -> Result<AstExpr<'s>, Error> {
         debug!("Build: expr");
 
         match self.peek() {
@@ -133,10 +133,32 @@ impl<'s> Parser<'s> {
             Some(Lexeme::Str(_)) => self.build_expr_str(),
             Some(Lexeme::Name(_)) => match self.peekn(1) {
                 Some(Lexeme::ParenOpen) => self.build_expr_fn_call(),
+                Some(Lexeme::Assign) => self.build_expr_assignment(until),
                 _ => self.build_expr_name(),
             },
             _ => Err("Cannot build expression".into()),
         }
+    }
+
+    fn build_expr_assignment(
+        &mut self,
+        until: fn(Option<&Lexeme>) -> bool,
+    ) -> Result<AstExpr<'s>, Error> {
+        debug!("Build: expr/assign");
+
+        let varname = match self.pop() {
+            Some(Lexeme::Name(name)) => name,
+            _ => return Err("Expected name for assignment".into()),
+        };
+
+        assert_lexeme!(self, Lexeme::Assign, "Expected assign");
+
+        let expr = self.build_expr(until)?;
+
+        Ok(AstExpr::Assignment {
+            varname,
+            expr: Box::new(expr),
+        })
     }
 
     fn build_expr_int(&mut self) -> Result<AstExpr<'s>, Error> {

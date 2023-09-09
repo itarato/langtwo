@@ -76,7 +76,12 @@ impl<'s> Interpreter<'s> {
             AstExpr::Int(v) => Ok(ExprResult::Int(v)),
             AstExpr::Str(s) => Ok(ExprResult::Str(s.to_string())),
             AstExpr::FnCall { name, args } => self.interpret_expr_fn_call(name, args),
-            AstExpr::Name(name) => self.variable_value(name),
+            AstExpr::Name(name) => self.variable_get(name),
+            AstExpr::Assignment { varname, expr } => {
+                let result = self.interpret_expr(*expr)?;
+                self.variable_set(varname, result.clone());
+                Ok(result)
+            }
         }
     }
 
@@ -145,14 +150,26 @@ impl<'s> Interpreter<'s> {
         Ok(ExprResult::Null)
     }
 
-    fn variable_value(&self, name: &'s str) -> Result<ExprResult, Error> {
+    fn variable_get(&self, name: &'s str) -> Result<ExprResult, Error> {
         let top_frame = self
             .frames
             .last()
             .ok_or::<String>("No more frames".into())?;
+
         if top_frame.variables.contains_key(name) {
             return Ok(top_frame.variables[name].clone());
         }
+
         Err("Variable not found".into())
+    }
+
+    fn variable_set(&mut self, name: &'s str, value: ExprResult) -> Result<(), Error> {
+        let top_frame = self
+            .frames
+            .last_mut()
+            .ok_or::<String>("No more frames".into())?;
+
+        top_frame.variables.insert(name, value);
+        Ok(())
     }
 }

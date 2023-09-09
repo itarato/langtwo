@@ -27,4 +27,8 @@ pub enum AstExpr<'s> {
     Str(&'s str),
     Int(i32),
     Name(&'s str),
+    Assignment {
+        varname: &'s str,
+        expr: Box<AstExpr<'s>>,
+    },
 }

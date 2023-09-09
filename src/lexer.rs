@@ -13,6 +13,7 @@ pub enum Lexeme<'a> {
     BraceClose,
     Semicolon,
     Comma,
+    Assign,
 }
 
 pub struct Lexer<'a> {
@@ -59,6 +60,10 @@ impl<'a> Lexer<'a> {
                     ',' => {
                         self.reader.next();
                         Lexeme::Comma
+                    }
+                    '=' => {
+                        self.reader.next();
+                        Lexeme::Assign
                     }
                     _ => return Err(format!("Invalid char during lexing: {}", c).into()),
                 },
@@ -170,6 +175,11 @@ mod test {
     #[test]
     fn test_comma() {
         assert_eq!(vec![Lexeme::Comma], lex_these("\t, \n").unwrap());
+    }
+
+    #[test]
+    fn test_assign() {
+        assert_eq!(vec![Lexeme::Assign], lex_these("\t= \n").unwrap());
     }
 
     #[test]
