@@ -35,7 +35,11 @@ fn main() {
         print(42);
     }
 
-    sayhello("world");
+    fn return() {
+        "world!";
+    }
+
+    sayhello(return());
     printnum();
 "#,
     ));

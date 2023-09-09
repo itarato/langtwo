@@ -219,3 +219,37 @@ impl<'s> Parser<'s> {
         self.lexemes.pop_front()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::lexer::*;
+    use crate::parser::*;
+    use crate::source_reader::*;
+
+    #[test]
+    fn build_empty_program() {
+        let root = parse_this(r#""#);
+        assert_eq!(0, root.statements.len());
+    }
+
+    #[test]
+    fn build_minimal_program() {
+        let root = parse_this(
+            r#"
+            fn main(word, second) {
+                print(word);
+                print(second);
+            }
+
+            main(123, "hello");
+        "#,
+        );
+        assert_eq!(2, root.statements.len());
+    }
+
+    fn parse_this(input: &'static str) -> AstProgram<'static> {
+        let reader = Box::new(StrReader::new(input));
+        let lexemes = Lexer::new(reader).read_any().unwrap();
+        Parser::new(lexemes.into()).build_ast().unwrap()
+    }
+}

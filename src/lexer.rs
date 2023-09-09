@@ -168,6 +168,11 @@ mod test {
     }
 
     #[test]
+    fn test_comma() {
+        assert_eq!(vec![Lexeme::Comma], lex_these("\t, \n").unwrap());
+    }
+
+    #[test]
     fn test_messy_mix() {
         assert_eq!(
             vec![
