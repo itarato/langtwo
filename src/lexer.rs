@@ -12,6 +12,7 @@ pub enum Lexeme<'a> {
     BraceOpen,
     BraceClose,
     Semicolon,
+    Comma,
 }
 
 pub struct Lexer<'a> {
@@ -54,6 +55,10 @@ impl<'a> Lexer<'a> {
                     '}' => {
                         self.reader.next();
                         Lexeme::BraceClose
+                    }
+                    ',' => {
+                        self.reader.next();
+                        Lexeme::Comma
                     }
                     _ => return Err(format!("Invalid char during lexing: {}", c).into()),
                 },
