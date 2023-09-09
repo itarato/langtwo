@@ -21,9 +21,9 @@ fn main() {
 
     let reader = Box::new(StrReader::new(
         r#"
-    fn sayhello() {
+    fn sayhello(x) {
         print("Hello ");
-        say("world");
+        say(x);
     }
 
     fn say(word) {
@@ -34,7 +34,7 @@ fn main() {
         print(42);
     }
 
-    sayhello();
+    sayhello("world");
     printnum();
 "#,
     ));

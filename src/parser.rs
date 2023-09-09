@@ -131,7 +131,10 @@ impl<'s> Parser<'s> {
         match self.peek() {
             Some(Lexeme::Int(_)) => self.build_expr_int(),
             Some(Lexeme::Str(_)) => self.build_expr_str(),
-            Some(Lexeme::Name(_)) => self.build_expr_fn_call(),
+            Some(Lexeme::Name(_)) => match self.peekn(1) {
+                Some(Lexeme::ParenOpen) => self.build_expr_fn_call(),
+                _ => self.build_expr_name(),
+            },
             _ => Err("Cannot build expression".into()),
         }
     }
@@ -151,6 +154,15 @@ impl<'s> Parser<'s> {
         match self.pop() {
             Some(Lexeme::Str(s)) => Ok(AstExpr::Str(s)),
             _ => Err("Expected string".into()),
+        }
+    }
+
+    fn build_expr_name(&mut self) -> Result<AstExpr<'s>, Error> {
+        debug!("Build: expr/name");
+
+        match self.pop() {
+            Some(Lexeme::Name(s)) => Ok(AstExpr::Name(s)),
+            _ => Err("Expected name".into()),
         }
     }
 
@@ -196,7 +208,11 @@ impl<'s> Parser<'s> {
     }
 
     fn peek(&self) -> Option<&Lexeme> {
-        self.lexemes.front()
+        self.peekn(0)
+    }
+
+    fn peekn(&self, n: usize) -> Option<&Lexeme> {
+        self.lexemes.get(n)
     }
 
     fn pop(&mut self) -> Option<Lexeme<'s>> {
