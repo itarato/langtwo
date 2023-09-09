@@ -15,6 +15,7 @@ impl<'s> Scope<'s> {
     }
 }
 
+#[derive(Debug)]
 enum ExprResult {
     Int(i32),
     Str(String),
@@ -69,6 +70,11 @@ impl<'s> Interpreter<'s> {
         name: &'s str,
         args: Vec<AstExpr<'s>>,
     ) -> Result<ExprResult, Error> {
+        match name {
+            "print" => return self.interpret_expr_fn_call_print(args),
+            _ => {}
+        };
+
         let mut last_result = ExprResult::Null;
 
         let lines = self
@@ -78,11 +84,29 @@ impl<'s> Interpreter<'s> {
             .ok_or::<String>("Missing function".into())?;
 
         for line in lines.clone() {
-            let line_result = self
+            last_result = self
                 .interpret_block_line(line.clone())?
                 .unwrap_or(ExprResult::Null);
         }
 
         Ok(last_result)
+    }
+
+    fn interpret_expr_fn_call_print(
+        &mut self,
+        args: Vec<AstExpr<'s>>,
+    ) -> Result<ExprResult, Error> {
+        if args.len() != 1 {
+            return Err("Function 'print' expects 1 argument".into());
+        }
+        let result = self.interpret_expr(args[0].clone())?;
+
+        match result {
+            ExprResult::Null => print!("null"),
+            ExprResult::Int(v) => print!("{}", v),
+            ExprResult::Str(s) => print!("{}", s),
+        };
+
+        Ok(ExprResult::Null)
     }
 }
