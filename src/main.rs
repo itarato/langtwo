@@ -9,6 +9,7 @@ mod parser;
 mod shared;
 mod source_reader;
 
+use crate::ast::AstDump;
 use crate::interpreter::*;
 use crate::lexer::*;
 use crate::parser::*;
@@ -53,10 +54,11 @@ fn main() {
     dbg!(&lex_result);
 
     let mut parser = Parser::new(lex_result.unwrap().into());
-    let ast_root = parser.build_ast();
+    let ast_root = parser.build_ast().unwrap();
     dbg!(&ast_root);
+    dbg!(ast_root.ast_dump());
 
     let mut interpreter = Interpreter::new();
-    let interpret_result = interpreter.interpret(ast_root.unwrap());
+    let interpret_result = interpreter.interpret(ast_root);
     dbg!(&interpret_result);
 }
