@@ -38,7 +38,7 @@ impl<'s> Interpreter<'s> {
             match statement {
                 AstStatement::FnDef { name, block } => self.interpret_fn_def(name, block),
                 AstStatement::BlockLine(line) => {
-                    self.interpret_block_line(line);
+                    let _result = self.interpret_block_line(line);
                 }
             };
         }

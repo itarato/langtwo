@@ -103,13 +103,13 @@ impl<'s> Parser<'s> {
         Ok(expr)
     }
 
-    fn build_expr(&mut self, until: fn(Option<&Lexeme>) -> bool) -> Result<AstExpr<'s>, Error> {
+    fn build_expr(&mut self, _until: fn(Option<&Lexeme>) -> bool) -> Result<AstExpr<'s>, Error> {
         debug!("Build: expr");
 
         match self.peek() {
             Some(Lexeme::Int(_)) => self.build_expr_int(),
             Some(Lexeme::Str(_)) => self.build_expr_str(),
-            Some(Lexeme::Name(fn_name)) => self.build_expr_fn_call(),
+            Some(Lexeme::Name(_)) => self.build_expr_fn_call(),
             _ => Err("Cannot build expression".into()),
         }
     }
