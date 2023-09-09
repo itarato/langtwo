@@ -7,6 +7,7 @@ pub struct AstProgram<'s> {
 pub enum AstStatement<'s> {
     FnDef {
         name: &'s str,
+        args: Vec<&'s str>,
         block: Vec<AstBlockLine<'s>>,
     },
     BlockLine(AstBlockLine<'s>),
@@ -25,4 +26,5 @@ pub enum AstExpr<'s> {
     },
     Str(&'s str),
     Int(i32),
+    Name(&'s str),
 }

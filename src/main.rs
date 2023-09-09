@@ -23,14 +23,19 @@ fn main() {
         r#"
     fn sayhello() {
         print("Hello ");
-        sayworld();
+        say("world");
     }
 
-    fn sayworld() {
-        print("World!");
+    fn say(word) {
+        print(word);
+    }
+
+    fn printnum() {
+        print(42);
     }
 
     sayhello();
+    printnum();
 "#,
     ));
     let lex_result = Lexer::new(reader).read_any();
@@ -42,5 +47,5 @@ fn main() {
 
     let mut interpreter = Interpreter::new();
     let interpret_result = interpreter.interpret(ast_root.unwrap());
-    dbg!(interpret_result);
+    dbg!(&interpret_result);
 }

@@ -11,10 +11,11 @@ macro_rules! assert_lexeme {
             _ => {
                 return {
                     let full_msg = format!(
-                        "{} | Ptr: {} | Rest lexemes: {:?} | Line: {}",
+                        "{} | Ptr: {} | Rest lexemes: {:?} | Loc {}:{}",
                         $msg,
                         $self.ptr,
                         $self.lexemes,
+                        file!(),
                         line!()
                     );
                     Err(full_msg.into())
@@ -72,6 +73,27 @@ impl<'s> Parser<'s> {
         };
 
         assert_lexeme!(self, Lexeme::ParenOpen, "Expected paren open");
+
+        let mut args = vec![];
+
+        if let Some(Lexeme::ParenClose) = self.peek() {
+            // Pattern match to skip args.
+        } else {
+            loop {
+                match self.pop() {
+                    Some(Lexeme::Name(name)) => args.push(name),
+                    _ => return Err("Expected argument name".into()),
+                };
+
+                if let Some(Lexeme::Comma) = self.peek() {
+                    self.pop();
+                    continue;
+                }
+
+                break;
+            }
+        }
+
         assert_lexeme!(self, Lexeme::ParenClose, "Expected paren close");
         assert_lexeme!(self, Lexeme::BraceOpen, "Expected brace open");
 
@@ -87,7 +109,7 @@ impl<'s> Parser<'s> {
 
         assert_lexeme!(self, Lexeme::BraceClose, "Expected brace close");
 
-        Ok(AstStatement::FnDef { name, block })
+        Ok(AstStatement::FnDef { name, args, block })
     }
 
     fn build_block_line(&mut self) -> Result<AstBlockLine<'s>, Error> {
@@ -158,9 +180,9 @@ impl<'s> Parser<'s> {
                 if let Some(&Lexeme::Comma) = self.peek() {
                     self.pop();
                     continue;
-                } else {
-                    break;
                 }
+
+                break;
             }
         }
 
