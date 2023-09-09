@@ -222,7 +222,6 @@ impl<'s> Parser<'s> {
 
 #[cfg(test)]
 mod test {
-    use crate::ast::*;
     use crate::lexer::*;
     use crate::parser::*;
     use crate::source_reader::*;
