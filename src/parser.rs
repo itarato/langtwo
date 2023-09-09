@@ -250,7 +250,7 @@ mod test {
             main(123, "hello");
         "#,
         );
-        assert_eq!(2, root.statements.len());
+        assert_eq!(3, root.statements.len());
     }
 
     fn parse_this(input: &'static str) -> AstProgram<'static> {

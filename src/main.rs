@@ -33,10 +33,15 @@ fn main() {
 
     fn printnum() {
         print(42);
+        fixed();
     }
 
     fn return() {
         "world!";
+    }
+
+    fn fixed() {
+        12;
     }
 
     sayhello(return());
