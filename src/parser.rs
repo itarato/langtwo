@@ -95,10 +95,17 @@ impl<'s> Parser<'s> {
     }
 
     fn build_block_line(&mut self) -> Result<AstBlockLine<'s>, Error> {
-        Ok(AstBlockLine::Expr(self.build_expr()?))
+        let expr = AstBlockLine::Expr(self.build_expr(|lexeme| match lexeme {
+            Some(&Lexeme::Semicolon) => true,
+            _ => false,
+        })?);
+
+        assert_lexeme!(self, Lexeme::Semicolon, "Expected semicolon");
+
+        Ok(expr)
     }
 
-    fn build_expr(&mut self) -> Result<AstExpr<'s>, Error> {
+    fn build_expr(&mut self, until: fn(Option<&Lexeme>) -> bool) -> Result<AstExpr<'s>, Error> {
         match self.peek() {
             Some(Lexeme::Int(_)) => self.build_expr_int(),
             Some(Lexeme::Str(_)) => self.build_expr_str(),
@@ -135,10 +142,15 @@ impl<'s> Parser<'s> {
             // Just for pattern matching, skip arg collection.
         } else {
             loop {
-                let arg = self.build_expr()?;
+                let arg = self.build_expr(|lexeme| match lexeme {
+                    Some(&Lexeme::Comma) => true,
+                    Some(&Lexeme::ParenClose) => true,
+                    _ => false,
+                })?;
                 args.push(arg);
 
                 if let Some(&Lexeme::Comma) = self.peek() {
+                    self.pop();
                     continue;
                 } else {
                     break;
