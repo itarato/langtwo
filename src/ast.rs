@@ -1,3 +1,4 @@
+use crate::lexer::*;
 use crate::shared::*;
 
 macro_rules! space {
@@ -88,6 +89,26 @@ impl AstDump for AstBlockLine<'_> {
 }
 
 #[derive(Debug, Clone)]
+pub enum Op {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+impl Op {
+    pub fn from_lexeme(lexeme: Lexeme) -> Result<Op, Error> {
+        match lexeme {
+            Lexeme::OpAdd => Ok(Op::Add),
+            Lexeme::OpSub => Ok(Op::Sub),
+            Lexeme::OpMul => Ok(Op::Mul),
+            Lexeme::OpDiv => Ok(Op::Div),
+            _ => Err("Invalid op lexeme".into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum AstExpr<'s> {
     FnCall {
         name: &'s str,
@@ -99,6 +120,11 @@ pub enum AstExpr<'s> {
     Assignment {
         varname: &'s str,
         expr: Box<AstExpr<'s>>,
+    },
+    BinOp {
+        lhs: Box<AstExpr<'s>>,
+        op: Op,
+        rhs: Box<AstExpr<'s>>,
     },
 }
 
@@ -114,6 +140,14 @@ impl AstDump for AstExpr<'_> {
                     "{}expr / assign\n{}",
                     space!(indent),
                     (*expr).ast_dump(indent + INDENT_INC)
+                )
+            }
+            AstExpr::BinOp { lhs, op: _, rhs } => {
+                format!(
+                    "{}expr / binop\n{}\n{}",
+                    space!(indent),
+                    (*lhs).ast_dump(indent + INDENT_INC),
+                    (*rhs).ast_dump(indent + INDENT_INC)
                 )
             }
         }

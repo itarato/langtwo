@@ -128,7 +128,7 @@ impl<'s> Parser<'s> {
     fn build_expr(&mut self, until: fn(Option<&Lexeme>) -> bool) -> Result<AstExpr<'s>, Error> {
         debug!("Build: expr");
 
-        match self.peek() {
+        let expr = match self.peek() {
             Some(Lexeme::Int(_)) => self.build_expr_int(),
             Some(Lexeme::Str(_)) => self.build_expr_str(),
             Some(Lexeme::Name(_)) => match self.peekn(1) {
@@ -137,6 +137,20 @@ impl<'s> Parser<'s> {
                 _ => self.build_expr_name(),
             },
             _ => Err("Cannot build expression".into()),
+        }?;
+
+        match self.peek() {
+            Some(Lexeme::OpAdd) | Some(Lexeme::OpSub) | Some(Lexeme::OpMul)
+            | Some(Lexeme::OpDiv) => {
+                let op = Op::from_lexeme(self.pop().unwrap())?;
+                let rhs = self.build_expr(until)?;
+                Ok(AstExpr::BinOp {
+                    lhs: Box::new(expr),
+                    op,
+                    rhs: Box::new(rhs),
+                })
+            }
+            _ => Ok(expr),
         }
     }
 
@@ -366,6 +380,61 @@ prg
             .trim()
             .to_owned(),
             parse_this("fn main() { 0; }").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_single_op() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / binop
+                expr / int
+                expr / int
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("1 + 2;").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_multiple_op() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / binop
+                expr / int
+                expr / binop
+                    expr / int
+                    expr / binop
+                        expr / int
+                        expr / int
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("1 + 2 * 3 / 4;").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_string_op() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / binop
+                expr / str
+                expr / str
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("\"a\" + \"b\";").ast_dump(0)
         );
     }
 

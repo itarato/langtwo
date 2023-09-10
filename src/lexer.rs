@@ -14,6 +14,10 @@ pub enum Lexeme<'a> {
     Semicolon,
     Comma,
     Assign,
+    OpAdd,
+    OpSub,
+    OpMul,
+    OpDiv,
 }
 
 pub struct Lexer<'a> {
@@ -64,6 +68,22 @@ impl<'a> Lexer<'a> {
                     '=' => {
                         self.reader.next();
                         Lexeme::Assign
+                    }
+                    '+' => {
+                        self.reader.next();
+                        Lexeme::OpAdd
+                    }
+                    '-' => {
+                        self.reader.next();
+                        Lexeme::OpSub
+                    }
+                    '*' => {
+                        self.reader.next();
+                        Lexeme::OpMul
+                    }
+                    '/' => {
+                        self.reader.next();
+                        Lexeme::OpDiv
                     }
                     _ => return Err(format!("Invalid char during lexing: {}", c).into()),
                 },
@@ -180,6 +200,14 @@ mod test {
     #[test]
     fn test_assign() {
         assert_eq!(vec![Lexeme::Assign], lex_this("\t= \n").unwrap());
+    }
+
+    #[test]
+    fn test_ops() {
+        assert_eq!(
+            vec![Lexeme::OpAdd, Lexeme::OpSub, Lexeme::OpMul, Lexeme::OpDiv],
+            lex_this("\t+    -    */ \n").unwrap()
+        );
     }
 
     #[test]

@@ -82,6 +82,24 @@ impl<'s> Interpreter<'s> {
                 self.variable_set(varname, result.clone())?;
                 Ok(result)
             }
+            AstExpr::BinOp { lhs, op, rhs } => self.interpret_expr_binop(lhs, op, rhs),
+        }
+    }
+
+    fn interpret_expr_binop(
+        &mut self,
+        lhs: Box<AstExpr<'s>>,
+        op: Op,
+        rhs: Box<AstExpr<'s>>,
+    ) -> Result<ExprResult, Error> {
+        let lhs_result = self.interpret_expr(*lhs)?;
+        let rhs_result = self.interpret_expr(*rhs)?;
+
+        match op {
+            Op::Add => unimplemented!(),
+            Op::Sub => unimplemented!(),
+            Op::Mul => unimplemented!(),
+            Op::Div => unimplemented!(),
         }
     }
 
