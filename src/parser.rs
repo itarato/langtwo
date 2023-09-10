@@ -339,6 +339,21 @@ prg
         );
     }
 
+    #[test]
+    fn test_expr_fn_call() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / fncall
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("main(123);").ast_dump(0)
+        );
+    }
+
     fn parse_this(input: &'static str) -> AstProgram<'static> {
         let reader = Box::new(StrReader::new(input));
         let lexemes = Lexer::new(reader).read_any().unwrap();
