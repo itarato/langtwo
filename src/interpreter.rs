@@ -17,7 +17,7 @@ impl<'s> Scope<'s> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExprResult {
     Int(i32),
     Str(String),
@@ -171,5 +171,95 @@ impl<'s> Interpreter<'s> {
 
         top_frame.variables.insert(name, value);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::interpreter::*;
+    use crate::lexer::*;
+    use crate::parser::*;
+    use crate::source_reader::*;
+
+    #[test]
+    fn test_empty_program() {
+        assert_eq!(None, interpret_this(""));
+    }
+
+    #[test]
+    fn test_expression_value() {
+        assert_eq!(Some(ExprResult::Int(7)), interpret_this("1; 3; 7;"));
+    }
+
+    #[test]
+    fn test_empty_fn_call() {
+        assert_eq!(
+            Some(ExprResult::Null),
+            interpret_this(
+                r#"
+                fn main() {
+                }
+                main();
+        "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_fn_call() {
+        assert_eq!(
+            Some(ExprResult::Str("ok".into())),
+            interpret_this(
+                r#"
+                fn main() {
+                    "ok";
+                }
+                main();
+        "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_multiple_fn_call() {
+        assert_eq!(
+            Some(ExprResult::Int(9)),
+            interpret_this(
+                r#"
+                fn main(v) {
+                    proxy(v);
+                }
+                fn proxy(x) {
+                    x;
+                }
+                main(9);
+        "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_fn_call_with_fn_call_arg() {
+        assert_eq!(
+            Some(ExprResult::Int(6)),
+            interpret_this(
+                r#"
+                fn main(v) {
+                    v;
+                }
+                fn fixed() {
+                    6;
+                }
+                main(fixed());
+        "#
+            )
+        );
+    }
+
+    fn interpret_this(input: &'static str) -> Option<ExprResult> {
+        let reader = Box::new(StrReader::new(input));
+        let lexemes = Lexer::new(reader).read_any().unwrap();
+        let ast_root = Parser::new(lexemes.into()).build_ast().unwrap();
+        Interpreter::new().interpret(ast_root).unwrap()
     }
 }

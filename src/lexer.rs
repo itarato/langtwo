@@ -121,65 +121,65 @@ mod test {
 
     #[test]
     fn test_empty_input() {
-        assert!(lex_these("").unwrap().is_empty());
+        assert!(lex_this("").unwrap().is_empty());
     }
 
     #[test]
     fn test_name() {
-        assert_eq!(vec![Lexeme::Name("hi")], lex_these("\thi \n").unwrap());
+        assert_eq!(vec![Lexeme::Name("hi")], lex_this("\thi \n").unwrap());
     }
 
     #[test]
     fn test_int() {
-        assert_eq!(vec![Lexeme::Int(1024)], lex_these("\t1024 \n").unwrap());
+        assert_eq!(vec![Lexeme::Int(1024)], lex_this("\t1024 \n").unwrap());
     }
 
     #[test]
     fn test_str() {
         assert_eq!(
             vec![Lexeme::Str("bla blu")],
-            lex_these("\t\"bla blu\" \n").unwrap()
+            lex_this("\t\"bla blu\" \n").unwrap()
         );
     }
 
     #[test]
     fn test_fn() {
-        assert_eq!(vec![Lexeme::Fn], lex_these("\tfn \n").unwrap());
+        assert_eq!(vec![Lexeme::Fn], lex_this("\tfn \n").unwrap());
     }
 
     #[test]
     fn test_paren_open() {
-        assert_eq!(vec![Lexeme::ParenOpen], lex_these("\t( \n").unwrap());
+        assert_eq!(vec![Lexeme::ParenOpen], lex_this("\t( \n").unwrap());
     }
 
     #[test]
     fn test_paren_close() {
-        assert_eq!(vec![Lexeme::ParenClose], lex_these("\t) \n").unwrap());
+        assert_eq!(vec![Lexeme::ParenClose], lex_this("\t) \n").unwrap());
     }
 
     #[test]
     fn test_brace_open() {
-        assert_eq!(vec![Lexeme::BraceOpen], lex_these("\t{ \n").unwrap());
+        assert_eq!(vec![Lexeme::BraceOpen], lex_this("\t{ \n").unwrap());
     }
 
     #[test]
     fn test_brace_close() {
-        assert_eq!(vec![Lexeme::BraceClose], lex_these("\t} \n").unwrap());
+        assert_eq!(vec![Lexeme::BraceClose], lex_this("\t} \n").unwrap());
     }
 
     #[test]
     fn test_semicolon() {
-        assert_eq!(vec![Lexeme::Semicolon], lex_these("\t; \n").unwrap());
+        assert_eq!(vec![Lexeme::Semicolon], lex_this("\t; \n").unwrap());
     }
 
     #[test]
     fn test_comma() {
-        assert_eq!(vec![Lexeme::Comma], lex_these("\t, \n").unwrap());
+        assert_eq!(vec![Lexeme::Comma], lex_this("\t, \n").unwrap());
     }
 
     #[test]
     fn test_assign() {
-        assert_eq!(vec![Lexeme::Assign], lex_these("\t= \n").unwrap());
+        assert_eq!(vec![Lexeme::Assign], lex_this("\t= \n").unwrap());
     }
 
     #[test]
@@ -195,11 +195,11 @@ mod test {
                 Lexeme::BraceClose,
                 Lexeme::Str("no")
             ],
-            lex_these("\thello 123     fn(){}\"no\"\n").unwrap()
+            lex_this("\thello 123     fn(){}\"no\"\n").unwrap()
         );
     }
 
-    fn lex_these(input: &'static str) -> Result<Vec<Lexeme>, Error> {
+    fn lex_this(input: &'static str) -> Result<Vec<Lexeme>, Error> {
         let reader = Box::new(StrReader::new(input));
         Lexer::new(reader).read_any()
     }
