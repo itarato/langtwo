@@ -96,10 +96,22 @@ impl<'s> Interpreter<'s> {
         let rhs_result = self.interpret_expr(*rhs)?;
 
         match op {
-            Op::Add => unimplemented!(),
-            Op::Sub => unimplemented!(),
-            Op::Mul => unimplemented!(),
-            Op::Div => unimplemented!(),
+            Op::Add => match (lhs_result, rhs_result) {
+                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a + b)),
+                _ => return Err("Incompatible binop types".into()),
+            },
+            Op::Sub => match (lhs_result, rhs_result) {
+                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a - b)),
+                _ => return Err("Incompatible binop types".into()),
+            },
+            Op::Mul => match (lhs_result, rhs_result) {
+                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a * b)),
+                _ => return Err("Incompatible binop types".into()),
+            },
+            Op::Div => match (lhs_result, rhs_result) {
+                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a / b)),
+                _ => return Err("Incompatible binop types".into()),
+            },
         }
     }
 
@@ -269,6 +281,35 @@ mod test {
                     6;
                 }
                 main(fixed());
+        "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_binop_simple() {
+        assert_eq!(
+            Some(ExprResult::Int(17)),
+            interpret_this(
+                r#"
+                a = 12;
+                b = 5;
+                a + b;
+        "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_binop_complex() {
+        assert_eq!(
+            Some(ExprResult::Int(62)),
+            interpret_this(
+                r#"
+                fn id(v) { v; }
+                a = 12;
+                b = 5;
+                a + b * 100 / id(10);
         "#
             )
         );
