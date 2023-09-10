@@ -56,7 +56,8 @@ fn main() {
     let mut parser = Parser::new(lex_result.unwrap().into());
     let ast_root = parser.build_ast().unwrap();
     dbg!(&ast_root);
-    dbg!(ast_root.ast_dump());
+
+    println!("---\n\n{}\n\n---", ast_root.ast_dump(0));
 
     let mut interpreter = Interpreter::new();
     let interpret_result = interpreter.interpret(ast_root);

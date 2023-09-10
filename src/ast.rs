@@ -1,5 +1,15 @@
+use crate::shared::*;
+
+macro_rules! space {
+    ($indent:expr) => {
+        char_n(' ', $indent)
+    };
+}
+
+const INDENT_INC: usize = 4;
+
 pub trait AstDump {
-    fn ast_dump(&self) -> String;
+    fn ast_dump(&self, indent: usize) -> String;
 }
 
 #[derive(Debug)]
@@ -8,14 +18,15 @@ pub struct AstProgram<'s> {
 }
 
 impl AstDump for AstProgram<'_> {
-    fn ast_dump(&self) -> String {
+    fn ast_dump(&self, indent: usize) -> String {
         format!(
-            "prg({})",
+            "{}prg\n{}",
+            space!(indent),
             self.statements
                 .iter()
-                .map(|e| e.ast_dump())
+                .map(|e| e.ast_dump(indent + INDENT_INC))
                 .collect::<Vec<String>>()
-                .join(",")
+                .join("\n")
         )
     }
 }
@@ -31,21 +42,28 @@ pub enum AstStatement<'s> {
 }
 
 impl AstDump for AstStatement<'_> {
-    fn ast_dump(&self) -> String {
+    fn ast_dump(&self, indent: usize) -> String {
         match self {
             AstStatement::FnDef {
                 name: _,
                 args: _,
                 block,
             } => format!(
-                "stmt(fndef({}))",
+                "{}stmt / fndef\n{}",
+                space!(indent),
                 block
                     .iter()
-                    .map(|e| e.ast_dump())
+                    .map(|e| e.ast_dump(indent + INDENT_INC))
                     .collect::<Vec<String>>()
-                    .join(",")
+                    .join("\n")
             ),
-            AstStatement::BlockLine(line) => format!("stmt({})", line.ast_dump()),
+            AstStatement::BlockLine(line) => {
+                format!(
+                    "{}stmt\n{}",
+                    space!(indent),
+                    line.ast_dump(indent + INDENT_INC)
+                )
+            }
         }
     }
 }
@@ -56,9 +74,15 @@ pub enum AstBlockLine<'s> {
 }
 
 impl AstDump for AstBlockLine<'_> {
-    fn ast_dump(&self) -> String {
+    fn ast_dump(&self, indent: usize) -> String {
         match self {
-            AstBlockLine::Expr(expr) => format!("blockline({})", expr.ast_dump()),
+            AstBlockLine::Expr(expr) => {
+                format!(
+                    "{}blockline\n{}",
+                    space!(indent),
+                    expr.ast_dump(indent + INDENT_INC)
+                )
+            }
         }
     }
 }
@@ -79,14 +103,18 @@ pub enum AstExpr<'s> {
 }
 
 impl AstDump for AstExpr<'_> {
-    fn ast_dump(&self) -> String {
+    fn ast_dump(&self, indent: usize) -> String {
         match self {
-            AstExpr::FnCall { .. } => "expr(fncall)".into(),
-            AstExpr::Str(_) => "expr(str)".into(),
-            AstExpr::Int(_) => "expr(int)".into(),
-            AstExpr::Name(_) => "expr(name)".into(),
+            AstExpr::FnCall { .. } => format!("{}expr / fncall", space!(indent)),
+            AstExpr::Str(_) => format!("{}expr / str", space!(indent)),
+            AstExpr::Int(_) => format!("{}expr / int", space!(indent)),
+            AstExpr::Name(_) => format!("{}expr / name", space!(indent)),
             AstExpr::Assignment { varname: _, expr } => {
-                format!("expr(assign({}))", (*expr).ast_dump())
+                format!(
+                    "{}expr / assign\n{}",
+                    space!(indent),
+                    (*expr).ast_dump(indent + INDENT_INC)
+                )
             }
         }
     }

@@ -275,6 +275,22 @@ mod test {
         assert_eq!(3, root.statements.len());
     }
 
+    #[test]
+    fn test_expr_assignment() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / assign
+                expr / fncall
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("a = calc();").ast_dump(0)
+        );
+    }
+
     fn parse_this(input: &'static str) -> AstProgram<'static> {
         let reader = Box::new(StrReader::new(input));
         let lexemes = Lexer::new(reader).read_any().unwrap();
