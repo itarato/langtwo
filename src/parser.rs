@@ -291,6 +291,54 @@ prg
         );
     }
 
+    #[test]
+    fn test_expr_name() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / name
+    stmt / fndef
+        blockline
+            expr / name
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("abc; fn main(x){ x; }").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_expr_int() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / int
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("2;").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_expr_str() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / str
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("\"hi\";").ast_dump(0)
+        );
+    }
+
     fn parse_this(input: &'static str) -> AstProgram<'static> {
         let reader = Box::new(StrReader::new(input));
         let lexemes = Lexer::new(reader).read_any().unwrap();
