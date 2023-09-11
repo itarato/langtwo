@@ -6,14 +6,15 @@ use crate::shared::*;
 
 macro_rules! assert_lexeme {
     ($self:ident, $lex:pat, $msg:expr) => {
-        match $self.pop() {
+        let got = $self.pop();
+        match &got {
             Some($lex) => {}
             _ => {
                 return {
                     let full_msg = format!(
-                        "{} | Ptr: {} | Rest lexemes: {:?} | Loc {}:{}",
+                        "{} | Got: {:?} | Rest lexemes: {:?} | Loc {}:{}",
                         $msg,
-                        $self.ptr,
+                        got,
                         $self.lexemes,
                         file!(),
                         line!()
@@ -27,12 +28,11 @@ macro_rules! assert_lexeme {
 
 pub struct Parser<'s> {
     lexemes: VecDeque<Lexeme<'s>>,
-    ptr: usize,
 }
 
 impl<'s> Parser<'s> {
     pub fn new(lexemes: VecDeque<Lexeme<'s>>) -> Parser<'s> {
-        Parser { lexemes, ptr: 0 }
+        Parser { lexemes }
     }
 
     pub fn build_ast(&mut self) -> Result<AstProgram<'s>, Error> {
@@ -95,6 +95,84 @@ impl<'s> Parser<'s> {
         }
 
         assert_lexeme!(self, Lexeme::ParenClose, "Expected paren close");
+
+        let block = self.build_block()?;
+
+        Ok(AstStatement::FnDef { name, args, block })
+    }
+
+    fn build_block_line(&mut self) -> Result<AstBlockLine<'s>, Error> {
+        debug!("Build: block line");
+
+        let expr = self.build_expr()?;
+
+        // Does it need a semicolon?
+        match expr {
+            AstExpr::If { .. } => {}
+            _ => {
+                assert_lexeme!(self, Lexeme::Semicolon, "Expected semicolon");
+            }
+        };
+
+        let line = AstBlockLine::Expr(expr);
+
+        Ok(line)
+    }
+
+    fn build_expr(&mut self) -> Result<AstExpr<'s>, Error> {
+        debug!("Build: expr");
+
+        let expr = match self.peek() {
+            Some(Lexeme::Int(_)) => self.build_expr_int(),
+            Some(Lexeme::Str(_)) => self.build_expr_str(),
+            Some(Lexeme::Name(_)) => match self.peekn(1) {
+                Some(Lexeme::ParenOpen) => self.build_expr_fn_call(),
+                Some(Lexeme::Assign) => self.build_expr_assignment(),
+                _ => self.build_expr_name(),
+            },
+            Some(Lexeme::If) => self.build_expr_if(),
+            _ => Err("Cannot build expression".into()),
+        }?;
+
+        match self.peek() {
+            Some(Lexeme::OpAdd) | Some(Lexeme::OpSub) | Some(Lexeme::OpMul)
+            | Some(Lexeme::OpDiv) => {
+                let op = Op::from_lexeme(self.pop().unwrap())?;
+                let rhs = self.build_expr()?;
+                Ok(AstExpr::BinOp {
+                    lhs: Box::new(expr),
+                    op,
+                    rhs: Box::new(rhs),
+                })
+            }
+            _ => Ok(expr),
+        }
+    }
+
+    fn build_expr_if(&mut self) -> Result<AstExpr<'s>, Error> {
+        debug!("Build: expr/if");
+
+        assert_lexeme!(self, Lexeme::If, "Expected keyword if");
+        assert_lexeme!(self, Lexeme::ParenOpen, "Expected paren open");
+
+        let cond = self.build_expr()?;
+
+        assert_lexeme!(self, Lexeme::ParenClose, "Expected paren close");
+
+        let true_block = self.build_block()?;
+
+        assert_lexeme!(self, Lexeme::Else, "Expected keyword else");
+
+        let false_block = self.build_block()?;
+
+        Ok(AstExpr::If {
+            cond: Box::new(cond),
+            true_block,
+            false_block,
+        })
+    }
+
+    fn build_block(&mut self) -> Result<AstBlock<'s>, Error> {
         assert_lexeme!(self, Lexeme::BraceOpen, "Expected brace open");
 
         let mut block_lines = vec![];
@@ -109,56 +187,10 @@ impl<'s> Parser<'s> {
 
         assert_lexeme!(self, Lexeme::BraceClose, "Expected brace close");
 
-        let block = AstBlock(block_lines);
-        Ok(AstStatement::FnDef { name, args, block })
+        Ok(AstBlock(block_lines))
     }
 
-    fn build_block_line(&mut self) -> Result<AstBlockLine<'s>, Error> {
-        debug!("Build: block line");
-
-        let expr = AstBlockLine::Expr(self.build_expr(|lexeme| match lexeme {
-            Some(&Lexeme::Semicolon) => true,
-            _ => false,
-        })?);
-
-        assert_lexeme!(self, Lexeme::Semicolon, "Expected semicolon");
-
-        Ok(expr)
-    }
-
-    fn build_expr(&mut self, until: fn(Option<&Lexeme>) -> bool) -> Result<AstExpr<'s>, Error> {
-        debug!("Build: expr");
-
-        let expr = match self.peek() {
-            Some(Lexeme::Int(_)) => self.build_expr_int(),
-            Some(Lexeme::Str(_)) => self.build_expr_str(),
-            Some(Lexeme::Name(_)) => match self.peekn(1) {
-                Some(Lexeme::ParenOpen) => self.build_expr_fn_call(),
-                Some(Lexeme::Assign) => self.build_expr_assignment(until),
-                _ => self.build_expr_name(),
-            },
-            _ => Err("Cannot build expression".into()),
-        }?;
-
-        match self.peek() {
-            Some(Lexeme::OpAdd) | Some(Lexeme::OpSub) | Some(Lexeme::OpMul)
-            | Some(Lexeme::OpDiv) => {
-                let op = Op::from_lexeme(self.pop().unwrap())?;
-                let rhs = self.build_expr(until)?;
-                Ok(AstExpr::BinOp {
-                    lhs: Box::new(expr),
-                    op,
-                    rhs: Box::new(rhs),
-                })
-            }
-            _ => Ok(expr),
-        }
-    }
-
-    fn build_expr_assignment(
-        &mut self,
-        until: fn(Option<&Lexeme>) -> bool,
-    ) -> Result<AstExpr<'s>, Error> {
+    fn build_expr_assignment(&mut self) -> Result<AstExpr<'s>, Error> {
         debug!("Build: expr/assign");
 
         let varname = match self.pop() {
@@ -168,7 +200,7 @@ impl<'s> Parser<'s> {
 
         assert_lexeme!(self, Lexeme::Assign, "Expected assign");
 
-        let expr = self.build_expr(until)?;
+        let expr = self.build_expr()?;
 
         Ok(AstExpr::Assignment {
             varname,
@@ -219,11 +251,7 @@ impl<'s> Parser<'s> {
             // Just for pattern matching, skip arg collection.
         } else {
             loop {
-                let arg = self.build_expr(|lexeme| match lexeme {
-                    Some(&Lexeme::Comma) => true,
-                    Some(&Lexeme::ParenClose) => true,
-                    _ => false,
-                })?;
+                let arg = self.build_expr()?;
                 args.push(arg);
 
                 if let Some(&Lexeme::Comma) = self.peek() {
@@ -241,7 +269,7 @@ impl<'s> Parser<'s> {
     }
 
     fn is_end(&self) -> bool {
-        self.ptr >= self.lexemes.len()
+        self.lexemes.is_empty()
     }
 
     fn peek(&self) -> Option<&Lexeme> {
@@ -367,6 +395,27 @@ prg
             .trim()
             .to_owned(),
             parse_this("main(123);").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_expr_if() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / if
+                blocklinelist
+                    blockline
+                        expr / fncall
+                blocklinelist
+                    blockline
+                        expr / str
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("if (2) { main(); } else { \"abc\"; }").ast_dump(0)
         );
     }
 

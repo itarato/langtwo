@@ -7,6 +7,8 @@ pub enum Lexeme<'a> {
     Int(i32),
     Str(&'a str),
     Fn,
+    If,
+    Else,
     ParenOpen,
     ParenClose,
     BraceOpen,
@@ -116,6 +118,8 @@ impl<'a> Lexer<'a> {
             .ok_or("Empty name".into())
             .map(|slice| match slice {
                 "fn" => Lexeme::Fn,
+                "if" => Lexeme::If,
+                "else" => Lexeme::Else,
                 _ => Lexeme::Name(slice),
             })
     }
@@ -163,8 +167,11 @@ mod test {
     }
 
     #[test]
-    fn test_fn() {
-        assert_eq!(vec![Lexeme::Fn], lex_this("\tfn \n").unwrap());
+    fn test_keywords() {
+        assert_eq!(
+            vec![Lexeme::Fn, Lexeme::If, Lexeme::Else],
+            lex_this("\tfn if else\n").unwrap()
+        );
     }
 
     #[test]
