@@ -4,7 +4,7 @@ use crate::ast::*;
 use crate::shared::*;
 
 struct Scope<'s> {
-    functions: HashMap<&'s str, (Vec<&'s str>, Vec<AstBlockLine<'s>>)>,
+    functions: HashMap<&'s str, (Vec<&'s str>, AstBlock<'s>)>,
     variables: HashMap<&'s str, ExprResult>,
 }
 
@@ -53,12 +53,7 @@ impl<'s> Interpreter<'s> {
         Ok(last_result)
     }
 
-    fn interpret_fn_def(
-        &mut self,
-        name: &'s str,
-        args: Vec<&'s str>,
-        block: Vec<AstBlockLine<'s>>,
-    ) {
+    fn interpret_fn_def(&mut self, name: &'s str, args: Vec<&'s str>, block: AstBlock<'s>) {
         self.global_frame.functions.insert(name, (args, block));
     }
 
@@ -94,8 +89,8 @@ impl<'s> Interpreter<'s> {
     fn interpret_expr_if(
         &mut self,
         cond: AstExpr<'s>,
-        true_block: Vec<AstBlockLine<'s>>,
-        false_block: Vec<AstBlockLine<'s>>,
+        true_block: AstBlock<'s>,
+        false_block: AstBlock<'s>,
     ) -> Result<ExprResult, Error> {
         unimplemented!()
     }
@@ -141,14 +136,14 @@ impl<'s> Interpreter<'s> {
 
         let mut last_result = ExprResult::Null;
 
-        let (args_names, lines) = self
+        let (args_names, block) = self
             .global_frame
             .functions
             .get(name)
             .ok_or::<String>("Missing function".into())?;
 
         let args_names = args_names.clone();
-        let lines = lines.clone();
+        let lines = block.0.clone();
 
         let mut new_frame = Scope::new();
 

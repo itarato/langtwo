@@ -97,18 +97,19 @@ impl<'s> Parser<'s> {
         assert_lexeme!(self, Lexeme::ParenClose, "Expected paren close");
         assert_lexeme!(self, Lexeme::BraceOpen, "Expected brace open");
 
-        let mut block = vec![];
+        let mut block_lines = vec![];
         loop {
             if let Some(&Lexeme::BraceClose) = self.peek() {
                 break;
             }
 
             let statement = self.build_block_line()?;
-            block.push(statement);
+            block_lines.push(statement);
         }
 
         assert_lexeme!(self, Lexeme::BraceClose, "Expected brace close");
 
+        let block = AstBlock(block_lines);
         Ok(AstStatement::FnDef { name, args, block })
     }
 
@@ -314,8 +315,9 @@ prg
         blockline
             expr / name
     stmt / fndef
-        blockline
-            expr / name
+        blocklinelist
+            blockline
+                expr / name
                 "#
             .trim()
             .to_owned(),
@@ -374,8 +376,9 @@ prg
             r#"
 prg
     stmt / fndef
-        blockline
-            expr / int
+        blocklinelist
+            blockline
+                expr / int
                 "#
             .trim()
             .to_owned(),

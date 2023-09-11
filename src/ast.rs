@@ -37,7 +37,7 @@ pub enum AstStatement<'s> {
     FnDef {
         name: &'s str,
         args: Vec<&'s str>,
-        block: Vec<AstBlockLine<'s>>,
+        block: AstBlock<'s>,
     },
     BlockLine(AstBlockLine<'s>),
 }
@@ -52,11 +52,7 @@ impl AstDump for AstStatement<'_> {
             } => format!(
                 "{}stmt / fndef\n{}",
                 space!(indent),
-                block
-                    .iter()
-                    .map(|e| e.ast_dump(indent + INDENT_INC))
-                    .collect::<Vec<String>>()
-                    .join("\n")
+                block.ast_dump(indent + INDENT_INC)
             ),
             AstStatement::BlockLine(line) => {
                 format!(
@@ -66,6 +62,23 @@ impl AstDump for AstStatement<'_> {
                 )
             }
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AstBlock<'s>(pub Vec<AstBlockLine<'s>>);
+
+impl AstDump for AstBlock<'_> {
+    fn ast_dump(&self, indent: usize) -> String {
+        format!(
+            "{}blocklinelist\n{}",
+            space!(indent),
+            self.0
+                .iter()
+                .map(|e| e.ast_dump(indent + INDENT_INC))
+                .collect::<Vec<String>>()
+                .join("\n")
+        )
     }
 }
 
@@ -128,8 +141,8 @@ pub enum AstExpr<'s> {
     },
     If {
         cond: Box<AstExpr<'s>>,
-        true_block: Vec<AstBlockLine<'s>>,
-        false_block: Vec<AstBlockLine<'s>>,
+        true_block: AstBlock<'s>,
+        false_block: AstBlock<'s>,
     },
 }
 
@@ -163,16 +176,8 @@ impl AstDump for AstExpr<'_> {
                 format!(
                     "{}expr / if\n{}\n{}",
                     space!(indent),
-                    true_block
-                        .iter()
-                        .map(|e| e.ast_dump(indent + INDENT_INC))
-                        .collect::<Vec<String>>()
-                        .join("\n"),
-                    false_block
-                        .iter()
-                        .map(|e| e.ast_dump(indent + INDENT_INC))
-                        .collect::<Vec<String>>()
-                        .join("\n")
+                    true_block.ast_dump(indent + INDENT_INC),
+                    false_block.ast_dump(indent + INDENT_INC)
                 )
             }
         }
