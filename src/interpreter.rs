@@ -83,7 +83,21 @@ impl<'s> Interpreter<'s> {
                 Ok(result)
             }
             AstExpr::BinOp { lhs, op, rhs } => self.interpret_expr_binop(lhs, op, rhs),
+            AstExpr::If {
+                cond,
+                true_block,
+                false_block,
+            } => self.interpret_expr_if(*cond, true_block, false_block),
         }
+    }
+
+    fn interpret_expr_if(
+        &mut self,
+        cond: AstExpr<'s>,
+        true_block: Vec<AstBlockLine<'s>>,
+        false_block: Vec<AstBlockLine<'s>>,
+    ) -> Result<ExprResult, Error> {
+        unimplemented!()
     }
 
     fn interpret_expr_binop(

@@ -160,7 +160,20 @@ impl AstDump for AstExpr<'_> {
                 true_block,
                 false_block,
             } => {
-                format!("{}expr / if\n{}\n{}", space!(indent),)
+                format!(
+                    "{}expr / if\n{}\n{}",
+                    space!(indent),
+                    true_block
+                        .iter()
+                        .map(|e| e.ast_dump(indent + INDENT_INC))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                    false_block
+                        .iter()
+                        .map(|e| e.ast_dump(indent + INDENT_INC))
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                )
             }
         }
     }
