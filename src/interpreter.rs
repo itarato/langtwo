@@ -92,7 +92,21 @@ impl<'s> Interpreter<'s> {
         true_block: AstBlock<'s>,
         false_block: AstBlock<'s>,
     ) -> Result<ExprResult, Error> {
-        unimplemented!()
+        let cond_result = self.interpret_expr(cond)?;
+
+        let bool_result = match cond_result {
+            ExprResult::Null => false,
+            ExprResult::Int(v) => v != 0,
+            ExprResult::Str(s) => !s.is_empty(),
+        };
+
+        let result = if bool_result {
+            self.interpret_block(true_block)?
+        } else {
+            self.interpret_block(false_block)?
+        };
+
+        Ok(result)
     }
 
     fn interpret_expr_binop(
@@ -134,16 +148,14 @@ impl<'s> Interpreter<'s> {
             _ => {}
         };
 
-        let mut last_result = ExprResult::Null;
-
         let (args_names, block) = self
             .global_frame
             .functions
             .get(name)
             .ok_or::<String>("Missing function".into())?;
 
+        let block = block.clone();
         let args_names = args_names.clone();
-        let lines = block.0.clone();
 
         let mut new_frame = Scope::new();
 
@@ -159,14 +171,23 @@ impl<'s> Interpreter<'s> {
 
         self.frames.push(new_frame);
 
+        let block_result = self.interpret_block(block)?;
+
+        // Remove frame.
+        self.frames.pop();
+
+        Ok(block_result)
+    }
+
+    fn interpret_block(&mut self, block: AstBlock<'s>) -> Result<ExprResult, Error> {
+        let mut last_result = ExprResult::Null;
+        let lines = block.0;
+
         for line in lines {
             last_result = self
                 .interpret_block_line(line.clone())?
                 .unwrap_or(ExprResult::Null);
         }
-
-        // Remove frame.
-        self.frames.pop();
 
         Ok(last_result)
     }
@@ -319,6 +340,76 @@ mod test {
                 a = 12;
                 b = 5;
                 a + b * 100 / id(10);
+        "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_if() {
+        assert_eq!(
+            Some(ExprResult::Int(2)),
+            interpret_this(
+                r#"
+                if (1) {
+                    2;
+                } else {
+                    3;
+                }
+        "#
+            )
+        );
+
+        assert_eq!(
+            Some(ExprResult::Int(3)),
+            interpret_this(
+                r#"
+                if (0) {
+                    2;
+                } else {
+                    3;
+                }
+        "#
+            )
+        );
+
+        assert_eq!(
+            Some(ExprResult::Int(2)),
+            interpret_this(
+                r#"
+                if ("ok") {
+                    2;
+                } else {
+                    3;
+                }
+        "#
+            )
+        );
+
+        assert_eq!(
+            Some(ExprResult::Int(3)),
+            interpret_this(
+                r#"
+                if ("") {
+                    2;
+                } else {
+                    3;
+                }
+        "#
+            )
+        );
+
+        assert_eq!(
+            Some(ExprResult::Int(3)),
+            interpret_this(
+                r#"
+                fn empty() {}
+
+                if (empty()) {
+                    2;
+                } else {
+                    3;
+                }
         "#
             )
         );
