@@ -126,6 +126,11 @@ pub enum AstExpr<'s> {
         op: Op,
         rhs: Box<AstExpr<'s>>,
     },
+    If {
+        cond: Box<AstExpr<'s>>,
+        true_block: Vec<AstBlockLine<'s>>,
+        false_block: Vec<AstBlockLine<'s>>,
+    },
 }
 
 impl AstDump for AstExpr<'_> {
@@ -149,6 +154,13 @@ impl AstDump for AstExpr<'_> {
                     (*lhs).ast_dump(indent + INDENT_INC),
                     (*rhs).ast_dump(indent + INDENT_INC)
                 )
+            }
+            AstExpr::If {
+                cond: _,
+                true_block,
+                false_block,
+            } => {
+                format!("{}expr / if\n{}\n{}", space!(indent),)
             }
         }
     }
