@@ -489,12 +489,24 @@ mod test {
     fn test_arithmetic_precedence() {
         assert_eq!(Some(ExprResult::Int(10)), interpret_this("2 * 3 + 4;"));
         assert_eq!(Some(ExprResult::Int(14)), interpret_this("2 + 3 * 4;"));
+        assert_eq!(
+            Some(ExprResult::Int(3)),
+            interpret_this("2 + 2 * 2 / 2 - 2 / 2;")
+        );
+        assert_eq!(
+            Some(ExprResult::Int(14)),
+            interpret_this("2 * 2 * 2 + 2 + 2 + 2;")
+        );
     }
 
     #[test]
     fn test_op_precedence() {
         assert_eq!(Some(ExprResult::Bool(true)), interpret_this("1 + 1 == 2;"));
         assert_eq!(Some(ExprResult::Bool(true)), interpret_this("2 == 1 + 1;"));
+        assert_eq!(
+            Some(ExprResult::Bool(true)),
+            interpret_this("2 * 2 + 2 == 3 / 3 + 5;")
+        );
     }
 
     fn interpret_this(input: &'static str) -> Option<ExprResult> {

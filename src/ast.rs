@@ -127,11 +127,13 @@ impl Op {
      */
     pub fn precedence(&self) -> u8 {
         match self {
+            Op::Eq => 0,
+
             Op::Add => 1,
             Op::Sub => 1,
+
             Op::Mul => 2,
             Op::Div => 2,
-            Op::Eq => 0,
         }
     }
 }

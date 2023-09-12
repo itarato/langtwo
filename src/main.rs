@@ -22,32 +22,7 @@ fn main() {
 
     let reader = Box::new(StrReader::new(
         r#"
-    fn sayhello(x) {
-        print("Hello ");
-        say(x, 111);
-    }
-
-    fn say(word, another) {
-        print(word);
-        print(another);
-    }
-
-    fn printnum() {
-        print(42);
-        fixed();
-    }
-
-    fn return() {
-        a = "world!";
-        a;
-    }
-
-    fn fixed() {
-        12;
-    }
-
-    sayhello(return());
-    printnum();
+        2 * 2 + 2 == 3 / 3 + 5;
 "#,
     ));
     let lex_result = Lexer::new(reader).read_any();

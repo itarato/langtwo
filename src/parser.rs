@@ -291,13 +291,18 @@ impl<'s> Parser<'s> {
                     rhs: rhs_rhs,
                 } => {
                     if op.precedence() > rhs_op.precedence() {
-                        // Wrong precendence. Needs to rotate the branches.
+                        // Wrong precendence. Needs to rotate the branches:
+                        //   1            2
+                        //  / \          / \
+                        // A   2   =>   1   C
+                        //    / \      / \
+                        //   B   C    A   B
                         AstExpr::BinOp {
-                            lhs: Box::new(AstExpr::BinOp {
+                            lhs: Box::new(self.reorder_binop_precedence(AstExpr::BinOp {
                                 lhs,
                                 op,
                                 rhs: rhs_lhs,
-                            }),
+                            })),
                             op: rhs_op,
                             rhs: rhs_rhs,
                         }
