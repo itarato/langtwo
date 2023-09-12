@@ -121,30 +121,23 @@ impl<'s> Interpreter<'s> {
         let lhs_result = self.interpret_expr(*lhs)?;
         let rhs_result = self.interpret_expr(*rhs)?;
 
-        match op {
-            Op::Add => match (lhs_result, rhs_result) {
-                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a + b)),
-                _ => return Err("Incompatible binop types".into()),
-            },
-            Op::Sub => match (lhs_result, rhs_result) {
-                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a - b)),
-                _ => return Err("Incompatible binop types".into()),
-            },
-            Op::Mul => match (lhs_result, rhs_result) {
-                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a * b)),
-                _ => return Err("Incompatible binop types".into()),
-            },
-            Op::Div => match (lhs_result, rhs_result) {
-                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a / b)),
-                _ => return Err("Incompatible binop types".into()),
-            },
-            Op::Eq => match (lhs_result, rhs_result) {
-                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a == b)),
-                (ExprResult::Str(a), ExprResult::Str(b)) => Ok(ExprResult::Bool(a == b)),
-                (ExprResult::Bool(a), ExprResult::Bool(b)) => Ok(ExprResult::Bool(a == b)),
-                (ExprResult::Null, ExprResult::Null) => Ok(ExprResult::Bool(true)),
-                _ => Ok(ExprResult::Bool(false)),
-            },
+        match (op, lhs_result, rhs_result) {
+            (Op::Add, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a + b)),
+            (Op::Sub, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a - b)),
+            (Op::Mul, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a * b)),
+            (Op::Div, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a / b)),
+
+            (Op::Eq, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a == b)),
+            (Op::Eq, ExprResult::Str(a), ExprResult::Str(b)) => Ok(ExprResult::Bool(a == b)),
+            (Op::Eq, ExprResult::Bool(a), ExprResult::Bool(b)) => Ok(ExprResult::Bool(a == b)),
+            (Op::Eq, ExprResult::Null, ExprResult::Null) => Ok(ExprResult::Bool(true)),
+            (Op::Eq, _, _) => Ok(ExprResult::Bool(false)),
+
+            (op, lhs, rhs) => {
+                return Err(
+                    format!("Incompatible binop types: {:?} {:?} {:?}", lhs, op, rhs).into(),
+                )
+            }
         }
     }
 
@@ -490,6 +483,18 @@ mod test {
         "#
             )
         );
+    }
+
+    #[test]
+    fn test_arithmetic_precedence() {
+        assert_eq!(Some(ExprResult::Int(10)), interpret_this("2 * 3 + 4;"));
+        assert_eq!(Some(ExprResult::Int(14)), interpret_this("2 + 3 * 4;"));
+    }
+
+    #[test]
+    fn test_op_precedence() {
+        assert_eq!(Some(ExprResult::Bool(true)), interpret_this("1 + 1 == 2;"));
+        assert_eq!(Some(ExprResult::Bool(true)), interpret_this("2 == 1 + 1;"));
     }
 
     fn interpret_this(input: &'static str) -> Option<ExprResult> {
