@@ -133,6 +133,11 @@ impl<'s> Interpreter<'s> {
             (Op::Eq, ExprResult::Null, ExprResult::Null) => Ok(ExprResult::Bool(true)),
             (Op::Eq, _, _) => Ok(ExprResult::Bool(false)),
 
+            (Op::Lt, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a < b)),
+            (Op::Lte, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a <= b)),
+            (Op::Gt, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a > b)),
+            (Op::Gte, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a >= b)),
+
             (op, lhs, rhs) => {
                 return Err(
                     format!("Incompatible binop types: {:?} {:?} {:?}", lhs, op, rhs).into(),
@@ -483,6 +488,26 @@ mod test {
         "#
             )
         );
+    }
+
+    #[test]
+    fn test_compare() {
+        assert_eq!(
+            Some(ExprResult::Bool(true)),
+            interpret_this("2 + 2 * 2 - 6 == 6 / 6 - 3 / 3;")
+        );
+        assert_eq!(Some(ExprResult::Bool(false)), interpret_this("3 == 2;"));
+
+        assert_eq!(Some(ExprResult::Bool(true)), interpret_this("1 < 2;"));
+        assert_eq!(Some(ExprResult::Bool(false)), interpret_this("3 < 2;"));
+
+        assert_eq!(Some(ExprResult::Bool(true)), interpret_this("1 <= 2;"));
+        assert_eq!(Some(ExprResult::Bool(true)), interpret_this("2 <= 2;"));
+        assert_eq!(Some(ExprResult::Bool(false)), interpret_this("3 <= 2;"));
+
+        assert_eq!(Some(ExprResult::Bool(false)), interpret_this("1 >= 2;"));
+        assert_eq!(Some(ExprResult::Bool(true)), interpret_this("2 >= 2;"));
+        assert_eq!(Some(ExprResult::Bool(true)), interpret_this("3 >= 2;"));
     }
 
     #[test]

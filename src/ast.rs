@@ -108,6 +108,10 @@ pub enum Op {
     Mul,
     Div,
     Eq,
+    Lt,
+    Gt,
+    Lte,
+    Gte,
 }
 
 impl Op {
@@ -118,6 +122,10 @@ impl Op {
             Lexeme::OpMul => Ok(Op::Mul),
             Lexeme::OpDiv => Ok(Op::Div),
             Lexeme::OpEq => Ok(Op::Eq),
+            Lexeme::OpLt => Ok(Op::Lt),
+            Lexeme::OpLte => Ok(Op::Lte),
+            Lexeme::OpGt => Ok(Op::Gt),
+            Lexeme::OpGte => Ok(Op::Gte),
             _ => Err("Invalid op lexeme".into()),
         }
     }
@@ -128,6 +136,10 @@ impl Op {
     pub fn precedence(&self) -> u8 {
         match self {
             Op::Eq => 0,
+            Op::Gt => 0,
+            Op::Gte => 0,
+            Op::Lt => 0,
+            Op::Lte => 0,
 
             Op::Add => 1,
             Op::Sub => 1,

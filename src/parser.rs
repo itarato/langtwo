@@ -144,12 +144,8 @@ impl<'s> Parser<'s> {
 
         match self.peek() {
             Some(Lexeme::OpAdd) | Some(Lexeme::OpSub) | Some(Lexeme::OpMul)
-            | Some(Lexeme::OpDiv) | Some(Lexeme::OpEq) => {
-                // Op precendence:
-                // 1: *, /
-                // 2: +, -
-                // 3: ==
-
+            | Some(Lexeme::OpDiv) | Some(Lexeme::OpEq) | Some(Lexeme::OpLt)
+            | Some(Lexeme::OpLte) | Some(Lexeme::OpGt) | Some(Lexeme::OpGte) => {
                 let op = Op::from_lexeme(self.pop().unwrap())?;
                 let rhs = self.build_expr()?;
 

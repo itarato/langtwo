@@ -23,6 +23,10 @@ pub enum Lexeme<'a> {
     OpMul,
     OpDiv,
     OpEq,
+    OpLt,
+    OpGt,
+    OpLte,
+    OpGte,
 }
 
 pub struct Lexer<'a> {
@@ -95,6 +99,26 @@ impl<'a> Lexer<'a> {
                     '/' => {
                         self.reader.next();
                         Lexeme::OpDiv
+                    }
+                    '<' => {
+                        self.reader.next();
+                        match self.reader.peek() {
+                            Some('=') => {
+                                self.reader.next();
+                                Lexeme::OpLte
+                            }
+                            _ => Lexeme::OpLt,
+                        }
+                    }
+                    '>' => {
+                        self.reader.next();
+                        match self.reader.peek() {
+                            Some('=') => {
+                                self.reader.next();
+                                Lexeme::OpGte
+                            }
+                            _ => Lexeme::OpGt,
+                        }
                     }
                     _ => return Err(format!("Invalid char during lexing: {}", c).into()),
                 },
@@ -233,6 +257,20 @@ mod test {
         assert_eq!(
             vec![Lexeme::Assign, Lexeme::OpEq, Lexeme::OpEq, Lexeme::Assign],
             lex_this("\t= == == = \n").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_compare() {
+        assert_eq!(
+            vec![
+                Lexeme::OpEq,
+                Lexeme::OpGt,
+                Lexeme::OpGte,
+                Lexeme::OpLt,
+                Lexeme::OpLte
+            ],
+            lex_this("\t== > >= < <=\n").unwrap()
         );
     }
 
