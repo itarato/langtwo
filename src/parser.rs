@@ -144,7 +144,7 @@ impl<'s> Parser<'s> {
 
         match self.peek() {
             Some(Lexeme::OpAdd) | Some(Lexeme::OpSub) | Some(Lexeme::OpMul)
-            | Some(Lexeme::OpDiv) => {
+            | Some(Lexeme::OpDiv) | Some(Lexeme::OpEq) => {
                 let op = Op::from_lexeme(self.pop().unwrap())?;
                 let rhs = self.build_expr()?;
                 Ok(AstExpr::BinOp {
@@ -522,6 +522,23 @@ prg
             .trim()
             .to_owned(),
             parse_this("\"a\" + \"b\";").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_expr_binop_eq() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / binop
+                expr / str
+                expr / str
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("\"a\" == \"b\";").ast_dump(0)
         );
     }
 

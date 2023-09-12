@@ -138,6 +138,13 @@ impl<'s> Interpreter<'s> {
                 (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a / b)),
                 _ => return Err("Incompatible binop types".into()),
             },
+            Op::Eq => match (lhs_result, rhs_result) {
+                (ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a == b)),
+                (ExprResult::Str(a), ExprResult::Str(b)) => Ok(ExprResult::Bool(a == b)),
+                (ExprResult::Bool(a), ExprResult::Bool(b)) => Ok(ExprResult::Bool(a == b)),
+                (ExprResult::Null, ExprResult::Null) => Ok(ExprResult::Bool(true)),
+                _ => Ok(ExprResult::Bool(false)),
+            },
         }
     }
 
@@ -456,6 +463,26 @@ mod test {
                         factor(n - 1) * n;
                     } else {
                         1;
+                    }
+                }
+
+                factor(10);
+        "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_recursion_with_boolean() {
+        assert_eq!(
+            Some(ExprResult::Int(3628800)),
+            interpret_this(
+                r#"
+                fn factor(n) {
+                    if (n == 1) {
+                        n;
+                    } else {
+                        factor(n - 1) * n;
                     }
                 }
 

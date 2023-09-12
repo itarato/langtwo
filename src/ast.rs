@@ -107,6 +107,7 @@ pub enum Op {
     Sub,
     Mul,
     Div,
+    Eq,
 }
 
 impl Op {
@@ -116,6 +117,7 @@ impl Op {
             Lexeme::OpSub => Ok(Op::Sub),
             Lexeme::OpMul => Ok(Op::Mul),
             Lexeme::OpDiv => Ok(Op::Div),
+            Lexeme::OpEq => Ok(Op::Eq),
             _ => Err("Invalid op lexeme".into()),
         }
     }
