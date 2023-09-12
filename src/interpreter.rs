@@ -126,6 +126,7 @@ impl<'s> Interpreter<'s> {
             (Op::Sub, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a - b)),
             (Op::Mul, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a * b)),
             (Op::Div, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a / b)),
+            (Op::Mod, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a % b)),
 
             (Op::Eq, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a == b)),
             (Op::Eq, ExprResult::Str(a), ExprResult::Str(b)) => Ok(ExprResult::Bool(a == b)),
@@ -337,6 +338,8 @@ mod test {
         "#
             )
         );
+
+        assert_eq!(Some(ExprResult::Int(3)), interpret_this("13 % 10;"));
     }
 
     #[test]

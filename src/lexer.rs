@@ -22,6 +22,7 @@ pub enum Lexeme<'a> {
     OpSub,
     OpMul,
     OpDiv,
+    OpMod,
     OpEq,
     OpLt,
     OpGt,
@@ -99,6 +100,10 @@ impl<'a> Lexer<'a> {
                     '/' => {
                         self.reader.next();
                         Lexeme::OpDiv
+                    }
+                    '%' => {
+                        self.reader.next();
+                        Lexeme::OpMod
                     }
                     '<' => {
                         self.reader.next();
@@ -247,8 +252,14 @@ mod test {
     #[test]
     fn test_ops() {
         assert_eq!(
-            vec![Lexeme::OpAdd, Lexeme::OpSub, Lexeme::OpMul, Lexeme::OpDiv],
-            lex_this("\t+    -    */ \n").unwrap()
+            vec![
+                Lexeme::OpAdd,
+                Lexeme::OpSub,
+                Lexeme::OpMul,
+                Lexeme::OpDiv,
+                Lexeme::OpMod
+            ],
+            lex_this("\t+    -    */  % \n").unwrap()
         );
     }
 
