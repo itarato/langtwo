@@ -22,6 +22,7 @@ pub enum Lexeme<'a> {
     OpSub,
     OpMul,
     OpDiv,
+    OpEq,
 }
 
 pub struct Lexer<'a> {
@@ -71,7 +72,13 @@ impl<'a> Lexer<'a> {
                     }
                     '=' => {
                         self.reader.next();
-                        Lexeme::Assign
+                        match self.reader.peek() {
+                            Some('=') => {
+                                self.reader.next();
+                                Lexeme::OpEq
+                            }
+                            _ => Lexeme::Assign,
+                        }
                     }
                     '+' => {
                         self.reader.next();
@@ -218,6 +225,14 @@ mod test {
         assert_eq!(
             vec![Lexeme::OpAdd, Lexeme::OpSub, Lexeme::OpMul, Lexeme::OpDiv],
             lex_this("\t+    -    */ \n").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_op_eq_and_assign() {
+        assert_eq!(
+            vec![Lexeme::Assign, Lexeme::OpEq, Lexeme::OpEq, Lexeme::Assign],
+            lex_this("\t= == == = \n").unwrap()
         );
     }
 
