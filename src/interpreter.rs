@@ -415,6 +415,26 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_recursion() {
+        assert_eq!(
+            Some(ExprResult::Int(3628800)),
+            interpret_this(
+                r#"
+                fn factor(n) {
+                    if (n) {
+                        factor(n - 1) * n;
+                    } else {
+                        1;
+                    }
+                }
+
+                factor(10);
+        "#
+            )
+        );
+    }
+
     fn interpret_this(input: &'static str) -> Option<ExprResult> {
         let reader = Box::new(StrReader::new(input));
         let lexemes = Lexer::new(reader).read_any().unwrap();
