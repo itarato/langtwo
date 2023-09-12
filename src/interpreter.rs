@@ -21,6 +21,7 @@ impl<'s> Scope<'s> {
 pub enum ExprResult {
     Int(i32),
     Str(String),
+    Bool(bool),
     Null,
 }
 
@@ -70,6 +71,7 @@ impl<'s> Interpreter<'s> {
         match expr {
             AstExpr::Int(v) => Ok(ExprResult::Int(v)),
             AstExpr::Str(s) => Ok(ExprResult::Str(s.to_string())),
+            AstExpr::Boolean(b) => Ok(ExprResult::Bool(b)),
             AstExpr::FnCall { name, args } => self.interpret_expr_fn_call(name, args),
             AstExpr::Name(name) => self.variable_get(name),
             AstExpr::Assignment { varname, expr } => {
@@ -95,6 +97,7 @@ impl<'s> Interpreter<'s> {
         let cond_result = self.interpret_expr(cond)?;
 
         let bool_result = match cond_result {
+            ExprResult::Bool(b) => b,
             ExprResult::Null => false,
             ExprResult::Int(v) => v != 0,
             ExprResult::Str(s) => !s.is_empty(),
@@ -205,6 +208,7 @@ impl<'s> Interpreter<'s> {
             ExprResult::Null => print!("null"),
             ExprResult::Int(v) => print!("{}", v),
             ExprResult::Str(s) => print!("{}", s),
+            ExprResult::Bool(b) => print!("{}", b),
         };
 
         Ok(ExprResult::Null)
@@ -406,6 +410,32 @@ mod test {
                 fn empty() {}
 
                 if (empty()) {
+                    2;
+                } else {
+                    3;
+                }
+        "#
+            )
+        );
+
+        assert_eq!(
+            Some(ExprResult::Int(2)),
+            interpret_this(
+                r#"
+                if (true) {
+                    2;
+                } else {
+                    3;
+                }
+        "#
+            )
+        );
+
+        assert_eq!(
+            Some(ExprResult::Int(3)),
+            interpret_this(
+                r#"
+                if (false) {
                     2;
                 } else {
                     3;

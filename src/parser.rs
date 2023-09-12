@@ -125,6 +125,14 @@ impl<'s> Parser<'s> {
         let expr = match self.peek() {
             Some(Lexeme::Int(_)) => self.build_expr_int(),
             Some(Lexeme::Str(_)) => self.build_expr_str(),
+            Some(Lexeme::True) => {
+                self.pop();
+                Ok(AstExpr::Boolean(true))
+            }
+            Some(Lexeme::False) => {
+                self.pop();
+                Ok(AstExpr::Boolean(false))
+            }
             Some(Lexeme::Name(_)) => match self.peekn(1) {
                 Some(Lexeme::ParenOpen) => self.build_expr_fn_call(),
                 Some(Lexeme::Assign) => self.build_expr_assignment(),
@@ -416,6 +424,33 @@ prg
             .trim()
             .to_owned(),
             parse_this("if (2) { main(); } else { \"abc\"; }").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_expr_bool() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / bool
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("true;").ast_dump(0)
+        );
+
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / bool
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("false;").ast_dump(0)
         );
     }
 

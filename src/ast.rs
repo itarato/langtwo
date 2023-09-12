@@ -130,6 +130,7 @@ pub enum AstExpr<'s> {
     Str(&'s str),
     Int(i32),
     Name(&'s str),
+    Boolean(bool),
     Assignment {
         varname: &'s str,
         expr: Box<AstExpr<'s>>,
@@ -180,6 +181,7 @@ impl AstDump for AstExpr<'_> {
                     false_block.ast_dump(indent + INDENT_INC)
                 )
             }
+            AstExpr::Boolean(_) => format!("{}expr / bool", space!(indent)),
         }
     }
 }
