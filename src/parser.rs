@@ -291,7 +291,7 @@ impl<'s> Parser<'s> {
                     rhs: rhs_rhs,
                 } => {
                     if op.precedence() > rhs_op.precedence() {
-                        // Wrong precendence. Needs to rotate the branches:
+                        // Wrong precendence. Needs to rotate the branches (recursively to the left subtree):
                         //   1            2
                         //  / \          / \
                         // A   2   =>   1   C
