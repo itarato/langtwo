@@ -6,6 +6,8 @@ pub enum Lexeme<'a> {
     Name(&'a str),
     Int(i32),
     Str(&'a str),
+    True,
+    False,
     Fn,
     If,
     Else,
@@ -41,7 +43,7 @@ impl<'a> Lexer<'a> {
                 None => break,
                 Some(c) => match c {
                     '0'..='9' => self.read_number()?,
-                    'a'..='z' => self.read_name()?,
+                    'a'..='z' => self.read_word()?,
                     '"' => self.read_string()?,
                     '(' => {
                         self.reader.next();
@@ -112,7 +114,7 @@ impl<'a> Lexer<'a> {
             })
     }
 
-    fn read_name(&mut self) -> Result<Lexeme<'a>, Error> {
+    fn read_word(&mut self) -> Result<Lexeme<'a>, Error> {
         self.reader
             .read_until(|c| c.is_ascii_alphanumeric())
             .ok_or("Empty name".into())
@@ -120,6 +122,8 @@ impl<'a> Lexer<'a> {
                 "fn" => Lexeme::Fn,
                 "if" => Lexeme::If,
                 "else" => Lexeme::Else,
+                "true" => Lexeme::True,
+                "false" => Lexeme::False,
                 _ => Lexeme::Name(slice),
             })
     }
@@ -214,6 +218,14 @@ mod test {
         assert_eq!(
             vec![Lexeme::OpAdd, Lexeme::OpSub, Lexeme::OpMul, Lexeme::OpDiv],
             lex_this("\t+    -    */ \n").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_boolean() {
+        assert_eq!(
+            vec![Lexeme::True, Lexeme::False],
+            lex_this("\t true \n\r false \n").unwrap()
         );
     }
 
