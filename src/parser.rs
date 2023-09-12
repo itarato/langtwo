@@ -145,13 +145,19 @@ impl<'s> Parser<'s> {
         match self.peek() {
             Some(Lexeme::OpAdd) | Some(Lexeme::OpSub) | Some(Lexeme::OpMul)
             | Some(Lexeme::OpDiv) | Some(Lexeme::OpEq) => {
+                // Op precendence:
+                // 1: *, /
+                // 2: +, -
+                // 3: ==
+
                 let op = Op::from_lexeme(self.pop().unwrap())?;
                 let rhs = self.build_expr()?;
-                Ok(AstExpr::BinOp {
+
+                Ok(self.reorder_binop_precedence(AstExpr::BinOp {
                     lhs: Box::new(expr),
                     op,
                     rhs: Box::new(rhs),
-                })
+                }))
             }
             _ => Ok(expr),
         }
@@ -274,6 +280,43 @@ impl<'s> Parser<'s> {
         assert_lexeme!(self, Lexeme::ParenClose, "Expected paren close");
 
         Ok(AstExpr::FnCall { name, args })
+    }
+
+    fn reorder_binop_precedence(&self, expr: AstExpr<'s>) -> AstExpr<'s> {
+        match expr {
+            AstExpr::BinOp { lhs, op, rhs } => match *rhs {
+                AstExpr::BinOp {
+                    lhs: rhs_lhs,
+                    op: rhs_op,
+                    rhs: rhs_rhs,
+                } => {
+                    if op.precedence() > rhs_op.precedence() {
+                        // Wrong precendence. Needs to rotate the branches.
+                        AstExpr::BinOp {
+                            lhs: Box::new(AstExpr::BinOp {
+                                lhs,
+                                op,
+                                rhs: rhs_lhs,
+                            }),
+                            op: rhs_op,
+                            rhs: rhs_rhs,
+                        }
+                    } else {
+                        AstExpr::BinOp {
+                            lhs,
+                            op,
+                            rhs: Box::new(AstExpr::BinOp {
+                                lhs: rhs_lhs,
+                                op: rhs_op,
+                                rhs: rhs_rhs,
+                            }),
+                        }
+                    }
+                }
+                _ => AstExpr::BinOp { lhs, op, rhs },
+            },
+            other => other,
+        }
     }
 
     fn is_end(&self) -> bool {

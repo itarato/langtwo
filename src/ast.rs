@@ -121,6 +121,19 @@ impl Op {
             _ => Err("Invalid op lexeme".into()),
         }
     }
+
+    /**
+     * Lower value is weaker precendence = needs to go higher in the AST.
+     */
+    pub fn precedence(&self) -> u8 {
+        match self {
+            Op::Add => 1,
+            Op::Sub => 1,
+            Op::Mul => 2,
+            Op::Div => 2,
+            Op::Eq => 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
