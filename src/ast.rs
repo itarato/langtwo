@@ -124,6 +124,7 @@ pub enum AstExpr<'s> {
         true_block: AstBlock<'s>,
         false_block: AstBlock<'s>,
     },
+    ParenExpr(Box<AstExpr<'s>>),
 }
 
 impl AstDump for AstExpr<'_> {
@@ -161,6 +162,13 @@ impl AstDump for AstExpr<'_> {
                 )
             }
             AstExpr::Boolean(_) => format!("{}expr / bool", space!(indent)),
+            AstExpr::ParenExpr(inner) => {
+                format!(
+                    "{}expr / parenexpr\n{}",
+                    space!(indent),
+                    (*inner).ast_dump(indent + INDENT_INC)
+                )
+            }
         }
     }
 }

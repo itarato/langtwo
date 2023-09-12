@@ -85,6 +85,7 @@ impl<'s> Interpreter<'s> {
                 true_block,
                 false_block,
             } => self.interpret_expr_if(*cond, true_block, false_block),
+            AstExpr::ParenExpr(inner_expr) => self.interpret_expr(*inner_expr),
         }
     }
 

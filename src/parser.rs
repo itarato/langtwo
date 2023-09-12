@@ -139,6 +139,7 @@ impl<'s> Parser<'s> {
                 _ => self.build_expr_name(),
             },
             Some(Lexeme::If) => self.build_expr_if(),
+            Some(Lexeme::ParenOpen) => self.build_expr_paren_expr(),
             _ => Err("Cannot build expression".into()),
         }?;
 
@@ -156,6 +157,16 @@ impl<'s> Parser<'s> {
             }
             _ => Ok(expr),
         }
+    }
+
+    fn build_expr_paren_expr(&mut self) -> Result<AstExpr<'s>, Error> {
+        assert_lexeme!(self, Lexeme::ParenOpen, "Expected paren open");
+
+        let expr = self.build_expr()?;
+
+        assert_lexeme!(self, Lexeme::ParenClose, "Expected paren close");
+
+        Ok(AstExpr::ParenExpr(Box::new(expr)))
     }
 
     fn build_expr_if(&mut self) -> Result<AstExpr<'s>, Error> {
