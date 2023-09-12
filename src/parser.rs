@@ -597,6 +597,24 @@ prg
     }
 
     #[test]
+    fn test_expr_paren_expr() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / parenexpr
+                expr / binop
+                    expr / str
+                    expr / str
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("(\"a\" == \"b\");").ast_dump(0)
+        );
+    }
+
+    #[test]
     fn test_op_in_argument() {
         assert_eq!(
             r#"
