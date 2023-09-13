@@ -25,6 +25,14 @@ pub enum ExprResult {
     Null,
 }
 
+enum CtrlResult<T> {
+    Break,
+    Other(T),
+}
+
+type CtrlOrExprResult = CtrlResult<ExprResult>;
+type CtrlOrMaybeExprResult = CtrlResult<Option<ExprResult>>;
+
 pub struct Interpreter<'s> {
     global_frame: Scope<'s>,
     frames: Vec<Scope<'s>>,
@@ -46,7 +54,12 @@ impl<'s> Interpreter<'s> {
                     self.interpret_fn_def(name, args, block)
                 }
                 AstStatement::BlockLine(line) => {
-                    last_result = self.interpret_block_line(line)?;
+                    last_result = match self.interpret_block_line(line)? {
+                        CtrlResult::Break => {
+                            return Err("Break from the program out of loop context".into())
+                        }
+                        CtrlResult::Other(other) => other,
+                    }
                 }
             };
         }
@@ -61,23 +74,37 @@ impl<'s> Interpreter<'s> {
     fn interpret_block_line(
         &mut self,
         line: AstBlockLine<'s>,
-    ) -> Result<Option<ExprResult>, Error> {
+    ) -> Result<CtrlOrMaybeExprResult, Error> {
         match line {
-            AstBlockLine::Expr(expr) => Ok(Some(self.interpret_expr(expr)?)),
+            AstBlockLine::Expr(expr) => match self.interpret_expr(expr)? {
+                CtrlResult::Break => Ok(CtrlResult::Break),
+                CtrlResult::Other(other) => Ok(CtrlResult::Other(Some(other))),
+            },
+            AstBlockLine::Loop(block) => {
+                self.interpret_loop(block)?;
+                Ok(CtrlResult::Other(None))
+            }
         }
     }
 
-    fn interpret_expr(&mut self, expr: AstExpr<'s>) -> Result<ExprResult, Error> {
+    fn interpret_loop(&mut self, block: AstBlock<'s>) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn interpret_expr(&mut self, expr: AstExpr<'s>) -> Result<CtrlOrExprResult, Error> {
         match expr {
-            AstExpr::Int(v) => Ok(ExprResult::Int(v)),
-            AstExpr::Str(s) => Ok(ExprResult::Str(s.to_string())),
-            AstExpr::Boolean(b) => Ok(ExprResult::Bool(b)),
+            AstExpr::Int(v) => Ok(CtrlResult::Other(ExprResult::Int(v))),
+            AstExpr::Str(s) => Ok(CtrlResult::Other(ExprResult::Str(s.to_string()))),
+            AstExpr::Boolean(b) => Ok(CtrlResult::Other(ExprResult::Bool(b))),
             AstExpr::FnCall { name, args } => self.interpret_expr_fn_call(name, args),
             AstExpr::Name(name) => self.variable_get(name),
             AstExpr::Assignment { varname, expr } => {
-                let result = self.interpret_expr(*expr)?;
+                let result = match self.interpret_expr(*expr)? {
+                    CtrlResult::Break => return Ok(CtrlResult::Break),
+                    CtrlResult::Other(other) => other,
+                };
                 self.variable_set(varname, result.clone())?;
-                Ok(result)
+                Ok(CtrlResult::Other(result))
             }
             AstExpr::BinOp { lhs, op, rhs } => self.interpret_expr_binop(lhs, op, rhs),
             AstExpr::If {
@@ -94,8 +121,11 @@ impl<'s> Interpreter<'s> {
         cond: AstExpr<'s>,
         true_block: AstBlock<'s>,
         false_block: Option<AstBlock<'s>>,
-    ) -> Result<ExprResult, Error> {
-        let cond_result = self.interpret_expr(cond)?;
+    ) -> Result<CtrlOrExprResult, Error> {
+        let cond_result = match self.interpret_expr(cond)? {
+            CtrlResult::Break => return Ok(CtrlResult::Break),
+            CtrlResult::Other(other) => other,
+        };
 
         let bool_result = match cond_result {
             ExprResult::Bool(b) => b,
@@ -104,16 +134,14 @@ impl<'s> Interpreter<'s> {
             ExprResult::Str(s) => !s.is_empty(),
         };
 
-        let result = if bool_result {
-            self.interpret_block(true_block)?
+        if bool_result {
+            self.interpret_block(true_block)
         } else {
             match false_block {
-                Some(block) => self.interpret_block(block)?,
-                _ => ExprResult::Null,
+                Some(block) => self.interpret_block(block),
+                _ => Ok(CtrlResult::Other(ExprResult::Null)),
             }
-        };
-
-        Ok(result)
+        }
     }
 
     fn interpret_expr_binop(
@@ -121,41 +149,49 @@ impl<'s> Interpreter<'s> {
         lhs: Box<AstExpr<'s>>,
         op: Op,
         rhs: Box<AstExpr<'s>>,
-    ) -> Result<ExprResult, Error> {
-        let lhs_result = self.interpret_expr(*lhs)?;
-        let rhs_result = self.interpret_expr(*rhs)?;
+    ) -> Result<CtrlOrExprResult, Error> {
+        let lhs_result = match self.interpret_expr(*lhs)? {
+            CtrlResult::Break => return Ok(CtrlResult::Break),
+            CtrlResult::Other(other) => other,
+        };
+        let rhs_result = match self.interpret_expr(*rhs)? {
+            CtrlResult::Break => return Ok(CtrlResult::Break),
+            CtrlResult::Other(other) => other,
+        };
 
-        match (op, lhs_result, rhs_result) {
-            (Op::Add, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a + b)),
-            (Op::Sub, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a - b)),
-            (Op::Mul, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a * b)),
-            (Op::Div, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a / b)),
-            (Op::Mod, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Int(a % b)),
+        let result = match (op, lhs_result, rhs_result) {
+            (Op::Add, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Int(a + b),
+            (Op::Sub, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Int(a - b),
+            (Op::Mul, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Int(a * b),
+            (Op::Div, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Int(a / b),
+            (Op::Mod, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Int(a % b),
 
-            (Op::Eq, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a == b)),
-            (Op::Eq, ExprResult::Str(a), ExprResult::Str(b)) => Ok(ExprResult::Bool(a == b)),
-            (Op::Eq, ExprResult::Bool(a), ExprResult::Bool(b)) => Ok(ExprResult::Bool(a == b)),
-            (Op::Eq, ExprResult::Null, ExprResult::Null) => Ok(ExprResult::Bool(true)),
-            (Op::Eq, _, _) => Ok(ExprResult::Bool(false)),
+            (Op::Eq, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Bool(a == b),
+            (Op::Eq, ExprResult::Str(a), ExprResult::Str(b)) => ExprResult::Bool(a == b),
+            (Op::Eq, ExprResult::Bool(a), ExprResult::Bool(b)) => ExprResult::Bool(a == b),
+            (Op::Eq, ExprResult::Null, ExprResult::Null) => ExprResult::Bool(true),
+            (Op::Eq, _, _) => ExprResult::Bool(false),
 
-            (Op::Lt, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a < b)),
-            (Op::Lte, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a <= b)),
-            (Op::Gt, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a > b)),
-            (Op::Gte, ExprResult::Int(a), ExprResult::Int(b)) => Ok(ExprResult::Bool(a >= b)),
+            (Op::Lt, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Bool(a < b),
+            (Op::Lte, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Bool(a <= b),
+            (Op::Gt, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Bool(a > b),
+            (Op::Gte, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Bool(a >= b),
 
             (op, lhs, rhs) => {
                 return Err(
                     format!("Incompatible binop types: {:?} {:?} {:?}", lhs, op, rhs).into(),
                 )
             }
-        }
+        };
+
+        Ok(CtrlResult::Other(result))
     }
 
     fn interpret_expr_fn_call(
         &mut self,
         name: &'s str,
         call_args: Vec<AstExpr<'s>>,
-    ) -> Result<ExprResult, Error> {
+    ) -> Result<CtrlOrExprResult, Error> {
         match name {
             "print" => return self.interpret_expr_fn_call_print(call_args),
             _ => {}
@@ -177,9 +213,11 @@ impl<'s> Interpreter<'s> {
             return Err("Argument lenght mismatch".into());
         }
         for i in 0..call_args.len() {
-            new_frame
-                .variables
-                .insert(args_names[i], self.interpret_expr(call_args[i].clone())?);
+            let var_value = match self.interpret_expr(call_args[i].clone())? {
+                CtrlResult::Break => return Ok(CtrlResult::Break),
+                CtrlResult::Other(v) => v,
+            };
+            new_frame.variables.insert(args_names[i], var_value);
         }
 
         self.frames.push(new_frame);
@@ -192,46 +230,49 @@ impl<'s> Interpreter<'s> {
         Ok(block_result)
     }
 
-    fn interpret_block(&mut self, block: AstBlock<'s>) -> Result<ExprResult, Error> {
+    fn interpret_block(&mut self, block: AstBlock<'s>) -> Result<CtrlOrExprResult, Error> {
         let mut last_result = ExprResult::Null;
         let lines = block.0;
 
         for line in lines {
-            last_result = self
-                .interpret_block_line(line.clone())?
-                .unwrap_or(ExprResult::Null);
+            last_result = match self.interpret_block_line(line.clone())? {
+                CtrlResult::Break => return Ok(CtrlResult::Break),
+                CtrlResult::Other(None) => ExprResult::Null,
+                CtrlResult::Other(Some(result)) => result,
+            };
         }
 
-        Ok(last_result)
+        Ok(CtrlResult::Other(last_result))
     }
 
     fn interpret_expr_fn_call_print(
         &mut self,
         args: Vec<AstExpr<'s>>,
-    ) -> Result<ExprResult, Error> {
+    ) -> Result<CtrlOrExprResult, Error> {
         if args.len() != 1 {
             return Err("Function 'print' expects 1 argument".into());
         }
         let result = self.interpret_expr(args[0].clone())?;
 
         match result {
-            ExprResult::Null => print!("null"),
-            ExprResult::Int(v) => print!("{}", v),
-            ExprResult::Str(s) => print!("{}", s),
-            ExprResult::Bool(b) => print!("{}", b),
+            CtrlResult::Break => return Ok(CtrlResult::Break),
+            CtrlResult::Other(ExprResult::Null) => print!("null"),
+            CtrlResult::Other(ExprResult::Int(v)) => print!("{}", v),
+            CtrlResult::Other(ExprResult::Str(s)) => print!("{}", s),
+            CtrlResult::Other(ExprResult::Bool(b)) => print!("{}", b),
         };
 
-        Ok(ExprResult::Null)
+        Ok(CtrlResult::Other(ExprResult::Null))
     }
 
-    fn variable_get(&self, name: &'s str) -> Result<ExprResult, Error> {
+    fn variable_get(&self, name: &'s str) -> Result<CtrlOrExprResult, Error> {
         let top_frame = self
             .frames
             .last()
             .ok_or::<String>("No more frames".into())?;
 
         if top_frame.variables.contains_key(name) {
-            return Ok(top_frame.variables[name].clone());
+            return Ok(CtrlResult::Other(top_frame.variables[name].clone()));
         }
 
         Err("Variable not found".into())

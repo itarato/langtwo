@@ -84,6 +84,7 @@ impl AstDump for AstBlock<'_> {
 #[derive(Debug, Clone)]
 pub enum AstBlockLine<'s> {
     Expr(AstExpr<'s>),
+    Loop(AstBlock<'s>),
 }
 
 impl AstDump for AstBlockLine<'_> {
@@ -94,6 +95,13 @@ impl AstDump for AstBlockLine<'_> {
                     "{}blockline\n{}",
                     space!(indent),
                     expr.ast_dump(indent + INDENT_INC)
+                )
+            }
+            AstBlockLine::Loop(block) => {
+                format!(
+                    "{}blockline / loop\n{}",
+                    space!(indent),
+                    block.ast_dump(indent + INDENT_INC)
                 )
             }
         }
