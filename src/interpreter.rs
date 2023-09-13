@@ -93,7 +93,7 @@ impl<'s> Interpreter<'s> {
         &mut self,
         cond: AstExpr<'s>,
         true_block: AstBlock<'s>,
-        false_block: AstBlock<'s>,
+        false_block: Option<AstBlock<'s>>,
     ) -> Result<ExprResult, Error> {
         let cond_result = self.interpret_expr(cond)?;
 
@@ -107,7 +107,10 @@ impl<'s> Interpreter<'s> {
         let result = if bool_result {
             self.interpret_block(true_block)?
         } else {
-            self.interpret_block(false_block)?
+            match false_block {
+                Some(block) => self.interpret_block(block)?,
+                _ => ExprResult::Null,
+            }
         };
 
         Ok(result)
@@ -557,10 +560,10 @@ mod test {
                     print(" ");
                     if (i % 3 == 0) {
                         print("fizz");
-                    } else {}
+                    }
                     if (i % 5 == 0) {
                         print("buzz");
-                    } else {}
+                    }
                     print(" ");
 
                     if (i < limit) {

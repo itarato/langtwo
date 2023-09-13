@@ -181,9 +181,13 @@ impl<'s> Parser<'s> {
 
         let true_block = self.build_block()?;
 
-        assert_lexeme!(self, Lexeme::Else, "Expected keyword else");
-
-        let false_block = self.build_block()?;
+        let false_block = match self.peek() {
+            Some(Lexeme::Else) => {
+                assert_lexeme!(self, Lexeme::Else, "Expected keyword else");
+                Some(self.build_block()?)
+            }
+            _ => None,
+        };
 
         Ok(AstExpr::If {
             cond: Box::new(cond),
@@ -478,6 +482,21 @@ prg
             .trim()
             .to_owned(),
             parse_this("if (2) { main(); } else { \"abc\"; }").ast_dump(0)
+        );
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline
+            expr / if
+                blocklinelist
+                    blockline
+                        expr / fncall
+                -
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("if (2) { main(); }").ast_dump(0)
         );
     }
 

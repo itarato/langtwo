@@ -122,7 +122,7 @@ pub enum AstExpr<'s> {
     If {
         cond: Box<AstExpr<'s>>,
         true_block: AstBlock<'s>,
-        false_block: AstBlock<'s>,
+        false_block: Option<AstBlock<'s>>,
     },
     ParenExpr(Box<AstExpr<'s>>),
 }
@@ -154,11 +154,15 @@ impl AstDump for AstExpr<'_> {
                 true_block,
                 false_block,
             } => {
+                let false_block_str = match false_block {
+                    Some(block) => block.ast_dump(indent + INDENT_INC),
+                    None => format!("{}-", space!(indent + INDENT_INC)),
+                };
                 format!(
                     "{}expr / if\n{}\n{}",
                     space!(indent),
                     true_block.ast_dump(indent + INDENT_INC),
-                    false_block.ast_dump(indent + INDENT_INC)
+                    false_block_str,
                 )
             }
             AstExpr::Boolean(_) => format!("{}expr / bool", space!(indent)),
