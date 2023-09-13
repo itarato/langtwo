@@ -104,17 +104,31 @@ impl<'s> Parser<'s> {
     fn build_block_line(&mut self) -> Result<AstBlockLine<'s>, Error> {
         debug!("Build: block line");
 
-        let expr = self.build_expr()?;
-
-        // Does it need a semicolon?
-        match expr {
-            AstExpr::If { .. } => {}
-            _ => {
+        let line = match self.peek() {
+            Some(Lexeme::Loop) => {
+                assert_lexeme!(self, Lexeme::Loop, "Expected keyword loop");
+                let loop_block = self.build_block()?;
+                AstBlockLine::Loop(loop_block)
+            }
+            Some(Lexeme::Break) => {
+                assert_lexeme!(self, Lexeme::Break, "Expected keyword break");
                 assert_lexeme!(self, Lexeme::Semicolon, "Expected semicolon");
+                AstBlockLine::Break
+            }
+            _ => {
+                let expr = self.build_expr()?;
+
+                // Does it need a semicolon?
+                match expr {
+                    AstExpr::If { .. } => {}
+                    _ => {
+                        assert_lexeme!(self, Lexeme::Semicolon, "Expected semicolon");
+                    }
+                };
+
+                AstBlockLine::Expr(expr)
             }
         };
-
-        let line = AstBlockLine::Expr(expr);
 
         Ok(line)
     }
@@ -645,6 +659,22 @@ prg
             .trim()
             .to_owned(),
             parse_this("main(a + 3 * other());").ast_dump(0)
+        );
+    }
+
+    #[test]
+    fn test_loop_and_break() {
+        assert_eq!(
+            r#"
+prg
+    stmt
+        blockline / loop
+            blocklinelist
+                blockline / break
+                "#
+            .trim()
+            .to_owned(),
+            parse_this("loop { break; }").ast_dump(0)
         );
     }
 

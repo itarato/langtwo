@@ -11,6 +11,8 @@ pub enum Lexeme<'a> {
     Fn,
     If,
     Else,
+    Loop,
+    Break,
     ParenOpen,
     ParenClose,
     BraceOpen,
@@ -151,6 +153,8 @@ impl<'a> Lexer<'a> {
                 "else" => Lexeme::Else,
                 "true" => Lexeme::True,
                 "false" => Lexeme::False,
+                "loop" => Lexeme::Loop,
+                "break" => Lexeme::Break,
                 _ => Lexeme::Name(slice),
             })
     }
@@ -200,8 +204,14 @@ mod test {
     #[test]
     fn test_keywords() {
         assert_eq!(
-            vec![Lexeme::Fn, Lexeme::If, Lexeme::Else],
-            lex_this("\tfn if else\n").unwrap()
+            vec![
+                Lexeme::Fn,
+                Lexeme::If,
+                Lexeme::Else,
+                Lexeme::Loop,
+                Lexeme::Break
+            ],
+            lex_this("\tfn if else loop break\n").unwrap()
         );
     }
 

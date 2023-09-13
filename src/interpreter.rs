@@ -84,11 +84,17 @@ impl<'s> Interpreter<'s> {
                 self.interpret_loop(block)?;
                 Ok(CtrlResult::Other(None))
             }
+            AstBlockLine::Break => Ok(CtrlResult::Break),
         }
     }
 
     fn interpret_loop(&mut self, block: AstBlock<'s>) -> Result<(), Error> {
-        unimplemented!()
+        loop {
+            match self.interpret_block(block.clone())? {
+                CtrlResult::Break => return Ok(()),
+                _ => {}
+            }
+        }
     }
 
     fn interpret_expr(&mut self, expr: AstExpr<'s>) -> Result<CtrlOrExprResult, Error> {
@@ -539,6 +545,32 @@ mod test {
     }
 
     #[test]
+    fn test_factor_with_loop() {
+        assert_eq!(
+            Some(ExprResult::Int(3628800)),
+            interpret_this(
+                r#"
+                n = 1;
+                i = 2;
+                factor = 10;
+
+                loop {
+                    n = n * i;
+
+                    if (i < factor) {
+                        i = i + 1;
+                    } else {
+                        break;
+                    }
+                }
+
+                n;
+        "#
+            )
+        );
+    }
+
+    #[test]
     fn test_compare() {
         assert_eq!(
             Some(ExprResult::Bool(true)),
@@ -588,6 +620,14 @@ mod test {
             Some(ExprResult::Bool(true)),
             interpret_this("2 * 2 + 2 == 3 / 3 + 5;")
         );
+    }
+
+    #[test]
+    fn test_loop() {
+        assert_eq!(
+            Some(ExprResult::Bool(true)),
+            interpret_this("loop { break; } 1 == 1;")
+        )
     }
 
     #[test]

@@ -85,6 +85,7 @@ impl AstDump for AstBlock<'_> {
 pub enum AstBlockLine<'s> {
     Expr(AstExpr<'s>),
     Loop(AstBlock<'s>),
+    Break,
 }
 
 impl AstDump for AstBlockLine<'_> {
@@ -104,6 +105,7 @@ impl AstDump for AstBlockLine<'_> {
                     block.ast_dump(indent + INDENT_INC)
                 )
             }
+            AstBlockLine::Break => format!("{}blockline / break", space!(indent)),
         }
     }
 }
