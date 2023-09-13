@@ -529,12 +529,50 @@ mod test {
     }
 
     #[test]
+    fn test_parens() {
+        assert_eq!(Some(ExprResult::Int(10)), interpret_this("(2 * 3) + 4;"));
+        assert_eq!(Some(ExprResult::Int(10)), interpret_this("4 + (2 * 3);"));
+        assert_eq!(Some(ExprResult::Int(14)), interpret_this("2 * (3 + 4);"));
+        assert_eq!(Some(ExprResult::Int(14)), interpret_this("(3 + 4) * 2;"));
+    }
+
+    #[test]
     fn test_op_precedence() {
         assert_eq!(Some(ExprResult::Bool(true)), interpret_this("1 + 1 == 2;"));
         assert_eq!(Some(ExprResult::Bool(true)), interpret_this("2 == 1 + 1;"));
         assert_eq!(
             Some(ExprResult::Bool(true)),
             interpret_this("2 * 2 + 2 == 3 / 3 + 5;")
+        );
+    }
+
+    #[test]
+    fn test_fizzbuzz() {
+        assert_eq!(
+            Some(ExprResult::Int(100)),
+            interpret_this(
+                r#"
+                fn fizzbuzz(i, limit) {
+                    print(i);
+                    print(" ");
+                    if (i % 3 == 0) {
+                        print("fizz");
+                    } else {}
+                    if (i % 5 == 0) {
+                        print("buzz");
+                    } else {}
+                    print(" ");
+
+                    if (i < limit) {
+                        fizzbuzz(i + 1, limit);
+                    } else {
+                        i;
+                    }
+                }
+
+                fizzbuzz(1, 100);
+            "#
+            )
         );
     }
 

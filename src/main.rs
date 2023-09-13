@@ -22,7 +22,25 @@ fn main() {
 
     let reader = Box::new(StrReader::new(
         r#"
-        2 * 2 + 2 == 3 / 3 + 5;
+        fn fizzbuzz(i, limit) {
+            print(i);
+            print(" ");
+            if (i % 3 == 0) {
+                print("fizz");
+            } else {}
+            if (i % 5 == 0) {
+                print("buzz");
+            } else {}
+            print(" ");
+
+            if (i < limit) {
+                fizzbuzz(i + 1, limit);
+            } else {
+                i;
+            }
+        }
+
+        fizzbuzz(1, 100);
 "#,
     ));
     let lex_result = Lexer::new(reader).read_any();
