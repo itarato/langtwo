@@ -102,58 +102,6 @@ impl AstDump for AstBlockLine<'_> {
 }
 
 #[derive(Debug, Clone)]
-pub enum Op {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-    Eq,
-    Lt,
-    Gt,
-    Lte,
-    Gte,
-}
-
-impl Op {
-    pub fn from_lexeme(lexeme: Lexeme) -> Result<Op, Error> {
-        match lexeme {
-            Lexeme::OpAdd => Ok(Op::Add),
-            Lexeme::OpSub => Ok(Op::Sub),
-            Lexeme::OpMul => Ok(Op::Mul),
-            Lexeme::OpDiv => Ok(Op::Div),
-            Lexeme::OpEq => Ok(Op::Eq),
-            Lexeme::OpLt => Ok(Op::Lt),
-            Lexeme::OpLte => Ok(Op::Lte),
-            Lexeme::OpGt => Ok(Op::Gt),
-            Lexeme::OpGte => Ok(Op::Gte),
-            Lexeme::OpMod => Ok(Op::Mod),
-            _ => Err("Invalid op lexeme".into()),
-        }
-    }
-
-    /**
-     * Lower value is weaker precendence = needs to go higher in the AST.
-     */
-    pub fn precedence(&self) -> u8 {
-        match self {
-            Op::Eq => 0,
-            Op::Gt => 0,
-            Op::Gte => 0,
-            Op::Lt => 0,
-            Op::Lte => 0,
-
-            Op::Add => 1,
-            Op::Sub => 1,
-            Op::Mod => 1,
-
-            Op::Mul => 2,
-            Op::Div => 2,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub enum AstExpr<'s> {
     FnCall {
         name: &'s str,

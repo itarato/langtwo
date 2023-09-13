@@ -18,16 +18,7 @@ pub enum Lexeme<'a> {
     Semicolon,
     Comma,
     Assign,
-    OpAdd,
-    OpSub,
-    OpMul,
-    OpDiv,
-    OpMod,
-    OpEq,
-    OpLt,
-    OpGt,
-    OpLte,
-    OpGte,
+    Op(Op),
 }
 
 pub struct Lexer<'a> {
@@ -80,39 +71,39 @@ impl<'a> Lexer<'a> {
                         match self.reader.peek() {
                             Some('=') => {
                                 self.reader.next();
-                                Lexeme::OpEq
+                                Lexeme::Op(Op::Eq)
                             }
                             _ => Lexeme::Assign,
                         }
                     }
                     '+' => {
                         self.reader.next();
-                        Lexeme::OpAdd
+                        Lexeme::Op(Op::Add)
                     }
                     '-' => {
                         self.reader.next();
-                        Lexeme::OpSub
+                        Lexeme::Op(Op::Sub)
                     }
                     '*' => {
                         self.reader.next();
-                        Lexeme::OpMul
+                        Lexeme::Op(Op::Mul)
                     }
                     '/' => {
                         self.reader.next();
-                        Lexeme::OpDiv
+                        Lexeme::Op(Op::Div)
                     }
                     '%' => {
                         self.reader.next();
-                        Lexeme::OpMod
+                        Lexeme::Op(Op::Mod)
                     }
                     '<' => {
                         self.reader.next();
                         match self.reader.peek() {
                             Some('=') => {
                                 self.reader.next();
-                                Lexeme::OpLte
+                                Lexeme::Op(Op::Lte)
                             }
-                            _ => Lexeme::OpLt,
+                            _ => Lexeme::Op(Op::Lt),
                         }
                     }
                     '>' => {
@@ -120,9 +111,9 @@ impl<'a> Lexer<'a> {
                         match self.reader.peek() {
                             Some('=') => {
                                 self.reader.next();
-                                Lexeme::OpGte
+                                Lexeme::Op(Op::Gte)
                             }
-                            _ => Lexeme::OpGt,
+                            _ => Lexeme::Op(Op::Gt),
                         }
                     }
                     _ => return Err(format!("Invalid char during lexing: {}", c).into()),
@@ -253,11 +244,11 @@ mod test {
     fn test_ops() {
         assert_eq!(
             vec![
-                Lexeme::OpAdd,
-                Lexeme::OpSub,
-                Lexeme::OpMul,
-                Lexeme::OpDiv,
-                Lexeme::OpMod
+                Lexeme::Op(Op::Add),
+                Lexeme::Op(Op::Sub),
+                Lexeme::Op(Op::Mul),
+                Lexeme::Op(Op::Div),
+                Lexeme::Op(Op::Mod)
             ],
             lex_this("\t+    -    */  % \n").unwrap()
         );
@@ -266,7 +257,12 @@ mod test {
     #[test]
     fn test_op_eq_and_assign() {
         assert_eq!(
-            vec![Lexeme::Assign, Lexeme::OpEq, Lexeme::OpEq, Lexeme::Assign],
+            vec![
+                Lexeme::Assign,
+                Lexeme::Op(Op::Eq),
+                Lexeme::Op(Op::Eq),
+                Lexeme::Assign
+            ],
             lex_this("\t= == == = \n").unwrap()
         );
     }
@@ -275,11 +271,11 @@ mod test {
     fn test_compare() {
         assert_eq!(
             vec![
-                Lexeme::OpEq,
-                Lexeme::OpGt,
-                Lexeme::OpGte,
-                Lexeme::OpLt,
-                Lexeme::OpLte
+                Lexeme::Op(Op::Eq),
+                Lexeme::Op(Op::Gt),
+                Lexeme::Op(Op::Gte),
+                Lexeme::Op(Op::Lt),
+                Lexeme::Op(Op::Lte)
             ],
             lex_this("\t== > >= < <=\n").unwrap()
         );
