@@ -233,7 +233,10 @@ impl<'s> Interpreter<'s> {
         // Remove frame.
         self.frames.pop();
 
-        Ok(block_result)
+        match block_result {
+            CtrlResult::Break => Err("Break from a function outside of a loop".into()),
+            _ => Ok(block_result),
+        }
     }
 
     fn interpret_block(&mut self, block: AstBlock<'s>) -> Result<CtrlOrExprResult, Error> {
