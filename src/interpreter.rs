@@ -3,6 +3,15 @@ use std::collections::HashMap;
 use crate::ast::*;
 use crate::shared::*;
 
+macro_rules! ctrl_exec {
+    ($interpret:expr) => {
+        match $interpret {
+            CtrlResult::Break => return Ok(CtrlResult::Break),
+            CtrlResult::Other(v) => v,
+        }
+    };
+}
+
 struct Scope<'s> {
     functions: HashMap<&'s str, (Vec<&'s str>, AstBlock<'s>)>,
     variables: HashMap<&'s str, ExprResult>,
@@ -105,10 +114,7 @@ impl<'s> Interpreter<'s> {
             AstExpr::FnCall { name, args } => self.interpret_expr_fn_call(name, args),
             AstExpr::Name(name) => self.variable_get(name),
             AstExpr::Assignment { varname, expr } => {
-                let result = match self.interpret_expr(*expr)? {
-                    CtrlResult::Break => return Ok(CtrlResult::Break),
-                    CtrlResult::Other(other) => other,
-                };
+                let result = ctrl_exec!(self.interpret_expr(*expr)?);
                 self.variable_set(varname, result.clone())?;
                 Ok(CtrlResult::Other(result))
             }
@@ -128,10 +134,7 @@ impl<'s> Interpreter<'s> {
         true_block: AstBlock<'s>,
         false_block: Option<AstBlock<'s>>,
     ) -> Result<CtrlOrExprResult, Error> {
-        let cond_result = match self.interpret_expr(cond)? {
-            CtrlResult::Break => return Ok(CtrlResult::Break),
-            CtrlResult::Other(other) => other,
-        };
+        let cond_result = ctrl_exec!(self.interpret_expr(cond)?);
 
         let bool_result = match cond_result {
             ExprResult::Bool(b) => b,
@@ -156,14 +159,8 @@ impl<'s> Interpreter<'s> {
         op: Op,
         rhs: Box<AstExpr<'s>>,
     ) -> Result<CtrlOrExprResult, Error> {
-        let lhs_result = match self.interpret_expr(*lhs)? {
-            CtrlResult::Break => return Ok(CtrlResult::Break),
-            CtrlResult::Other(other) => other,
-        };
-        let rhs_result = match self.interpret_expr(*rhs)? {
-            CtrlResult::Break => return Ok(CtrlResult::Break),
-            CtrlResult::Other(other) => other,
-        };
+        let lhs_result = ctrl_exec!(self.interpret_expr(*lhs)?);
+        let rhs_result = ctrl_exec!(self.interpret_expr(*rhs)?);
 
         let result = match (op, lhs_result, rhs_result) {
             (Op::Add, ExprResult::Int(a), ExprResult::Int(b)) => ExprResult::Int(a + b),
@@ -219,10 +216,7 @@ impl<'s> Interpreter<'s> {
             return Err("Argument lenght mismatch".into());
         }
         for i in 0..call_args.len() {
-            let var_value = match self.interpret_expr(call_args[i].clone())? {
-                CtrlResult::Break => return Ok(CtrlResult::Break),
-                CtrlResult::Other(v) => v,
-            };
+            let var_value = ctrl_exec!(self.interpret_expr(call_args[i].clone())?);
             new_frame.variables.insert(args_names[i], var_value);
         }
 
@@ -244,11 +238,7 @@ impl<'s> Interpreter<'s> {
         let lines = block.0;
 
         for line in lines {
-            last_result = match self.interpret_block_line(line.clone())? {
-                CtrlResult::Break => return Ok(CtrlResult::Break),
-                CtrlResult::Other(None) => ExprResult::Null,
-                CtrlResult::Other(Some(result)) => result,
-            };
+            last_result = ctrl_exec!(self.interpret_block_line(line)?).unwrap_or(ExprResult::Null);
         }
 
         Ok(CtrlResult::Other(last_result))
@@ -261,14 +251,12 @@ impl<'s> Interpreter<'s> {
         if args.len() != 1 {
             return Err("Function 'print' expects 1 argument".into());
         }
-        let result = self.interpret_expr(args[0].clone())?;
 
-        match result {
-            CtrlResult::Break => return Ok(CtrlResult::Break),
-            CtrlResult::Other(ExprResult::Null) => print!("null"),
-            CtrlResult::Other(ExprResult::Int(v)) => print!("{}", v),
-            CtrlResult::Other(ExprResult::Str(s)) => print!("{}", s),
-            CtrlResult::Other(ExprResult::Bool(b)) => print!("{}", b),
+        match ctrl_exec!(self.interpret_expr(args[0].clone())?) {
+            ExprResult::Null => print!("null"),
+            ExprResult::Int(v) => print!("{}", v),
+            ExprResult::Str(s) => print!("{}", s),
+            ExprResult::Bool(b) => print!("{}", b),
         };
 
         Ok(CtrlResult::Other(ExprResult::Null))
