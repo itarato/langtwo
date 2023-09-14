@@ -4,6 +4,7 @@ extern crate log;
 
 mod ast;
 mod interpreter;
+mod ir;
 mod lexer;
 mod parser;
 mod shared;
