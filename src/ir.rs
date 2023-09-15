@@ -194,6 +194,7 @@ impl IRBuilder {
         args: Vec<&str>,
         block: AstBlock,
     ) -> Result<Vec<Operation>, Error> {
+        // Make a label to current (start-of-function) and last+1 (end-of-function).
         unimplemented!()
     }
 
