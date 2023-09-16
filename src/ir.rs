@@ -10,7 +10,7 @@ type Label = usize;
 type CondCode = Vec<CondResult>;
 type ResultRegAndOps = (RegVal, Vec<Operation>);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CondResult {
     Eq,
     NotEq,
@@ -20,7 +20,7 @@ pub enum CondResult {
     Gte,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Operation {
     Add {
         lhs: RegVal,
@@ -299,4 +299,48 @@ impl IRBuilder {
 #[derive(Debug)]
 pub struct IR {
     instructions: Vec<Operation>,
+}
+
+#[cfg(test)]
+mod test {
+    use crate::ir::*;
+    use crate::lexer::*;
+    use crate::parser::*;
+    use crate::source_reader::*;
+
+    #[test]
+    fn test_empty() {
+        assert!(ir_this("").instructions.is_empty());
+    }
+
+    #[test]
+    fn test_int() {
+        assert_eq!(
+            vec![Operation::LoadI { val: 4, out: 0 }],
+            ir_this("4;").instructions
+        );
+    }
+
+    #[test]
+    fn test_int_binop_add() {
+        assert_eq!(
+            vec![
+                Operation::LoadI { val: 4, out: 0 },
+                Operation::LoadI { val: 1, out: 1 },
+                Operation::Add {
+                    lhs: 0,
+                    rhs: 1,
+                    out: 2
+                },
+            ],
+            ir_this("4 + 1;").instructions
+        );
+    }
+
+    fn ir_this(input: &'static str) -> IR {
+        let reader = Box::new(StrReader::new(input));
+        let lexemes = Lexer::new(reader).read_any().unwrap();
+        let ast_root = Parser::new(lexemes.into()).build_ast().unwrap();
+        IRBuilder::new().build(ast_root).unwrap()
+    }
 }
