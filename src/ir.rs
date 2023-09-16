@@ -8,7 +8,7 @@ type ImmVal = i32;
 // This might be a hack for now, but a simple auto-inc usize will do it.
 type Label = usize;
 type CondCode = Vec<CondResult>;
-type ResultRegAndOps = (RegVal, Vec<Operation>);
+type OutRegAndOps = (RegVal, Vec<Operation>);
 
 #[derive(Debug, PartialEq)]
 pub enum CondResult {
@@ -218,14 +218,14 @@ impl IRBuilder {
         }
     }
 
-    fn build_expr(&mut self, expr: AstExpr) -> Result<ResultRegAndOps, Error> {
+    fn build_expr(&mut self, expr: AstExpr) -> Result<OutRegAndOps, Error> {
         match expr {
             AstExpr::FnCall { name, args } => unimplemented!(),
             AstExpr::Str(s) => unimplemented!(),
             AstExpr::Int(i) => self.build_expr_int(i),
             AstExpr::Name(name) => self.build_expr_name(name),
             AstExpr::Boolean(b) => unimplemented!(),
-            AstExpr::Assignment { varname, expr } => unimplemented!(),
+            AstExpr::Assignment { varname, expr } => self.build_expr_assignment(varname, *expr),
             AstExpr::BinOp { lhs, op, rhs } => self.build_expr_binop(*lhs, op, *rhs),
             AstExpr::If {
                 cond,
@@ -236,12 +236,30 @@ impl IRBuilder {
         }
     }
 
+    fn build_expr_assignment(
+        &mut self,
+        varname: &str,
+        expr: AstExpr,
+    ) -> Result<OutRegAndOps, Error> {
+        let (expr_reg, mut expr_ops) = self.build_expr(expr)?;
+        let out = self.register_variable_name(varname);
+        let mut ops = vec![];
+        ops.append(&mut expr_ops);
+
+        ops.push(Operation::I2i {
+            lhs: expr_reg,
+            rhs: out,
+        });
+
+        Ok((out, ops))
+    }
+
     fn build_expr_binop(
         &mut self,
         lhs: AstExpr,
         op: Op,
         rhs: AstExpr,
-    ) -> Result<ResultRegAndOps, Error> {
+    ) -> Result<OutRegAndOps, Error> {
         let (lhs_reg, mut lhs_ops) = self.build_expr(lhs)?;
         let (rhs_reg, mut rhs_ops) = self.build_expr(rhs)?;
 
@@ -265,12 +283,12 @@ impl IRBuilder {
         Ok((out, ops))
     }
 
-    fn build_expr_name(&mut self, name: &str) -> Result<ResultRegAndOps, Error> {
+    fn build_expr_name(&mut self, name: &str) -> Result<OutRegAndOps, Error> {
         let addr = self.register_variable_name(name);
         Ok((addr, vec![]))
     }
 
-    fn build_expr_int(&mut self, val: i32) -> Result<ResultRegAndOps, Error> {
+    fn build_expr_int(&mut self, val: i32) -> Result<OutRegAndOps, Error> {
         let out = self.next_free_reg_addr();
         let op = Operation::LoadI { val, out };
         Ok((out, vec![op]))
@@ -283,9 +301,13 @@ impl IRBuilder {
     }
 
     fn register_variable_name(&mut self, name: &str) -> RegVal {
-        let addr = self.next_free_reg_addr();
-        self.variables.insert(name.into(), addr);
-        addr
+        if self.variables.contains_key(name.into()) {
+            self.variables[name.into()]
+        } else {
+            let addr = self.next_free_reg_addr();
+            self.variables.insert(name.into(), addr);
+            addr
+        }
     }
 
     fn get_variable_addr(&mut self, name: &str) -> Result<RegVal, Error> {
@@ -298,7 +320,7 @@ impl IRBuilder {
 
 #[derive(Debug)]
 pub struct IR {
-    instructions: Vec<Operation>,
+    pub instructions: Vec<Operation>,
 }
 
 #[cfg(test)]
@@ -334,6 +356,25 @@ mod test {
                 },
             ],
             ir_this("4 + 1;").instructions
+        );
+    }
+
+    #[test]
+    fn test_assignment() {
+        assert_eq!(
+            vec![
+                Operation::LoadI { val: 4, out: 0 }, // 4 -> r0
+                Operation::I2i { lhs: 0, rhs: 1 },   // r0 -> r1(a)
+                Operation::LoadI { val: 2, out: 2 }, // 2 -> r2
+                Operation::Add {
+                    // r1(a) + r2 -> r3
+                    lhs: 1,
+                    rhs: 2,
+                    out: 3
+                },
+                Operation::I2i { lhs: 3, rhs: 1 }, // r3 -> r1(a)
+            ],
+            ir_this("a = 4; a = a + 2;").instructions
         );
     }
 
