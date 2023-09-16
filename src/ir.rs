@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::ast::*;
 use crate::shared::*;
 
@@ -6,6 +8,7 @@ type ImmVal = i32;
 // This might be a hack for now, but a simple auto-inc usize will do it.
 type Label = usize;
 type CondCode = Vec<CondResult>;
+type ResultRegAndOps = (RegVal, Vec<Operation>);
 
 #[derive(Debug)]
 pub enum CondResult {
@@ -76,7 +79,7 @@ pub enum Operation {
         out: RegVal,
     },
     LoadI {
-        addr: ImmVal,
+        val: ImmVal,
         out: RegVal,
     },
 
@@ -158,11 +161,17 @@ pub enum Operation {
     },
 }
 
-pub struct IRBuilder;
+pub struct IRBuilder {
+    next_free_reg_addr: usize,
+    variables: HashMap<String, RegVal>,
+}
 
 impl IRBuilder {
     pub fn new() -> IRBuilder {
-        IRBuilder
+        IRBuilder {
+            next_free_reg_addr: 0,
+            variables: HashMap::new(),
+        }
     }
 
     pub fn build(&mut self, ast: AstProgram) -> Result<IR, Error> {
@@ -199,7 +208,62 @@ impl IRBuilder {
     }
 
     fn build_block_line(&mut self, line: AstBlockLine) -> Result<Vec<Operation>, Error> {
-        unimplemented!()
+        match line {
+            AstBlockLine::Expr(expr) => {
+                let (_, ops) = self.build_expr(expr)?;
+                Ok(ops)
+            }
+            AstBlockLine::Loop(block) => unimplemented!(),
+            AstBlockLine::Break => unimplemented!(),
+        }
+    }
+
+    fn build_expr(&mut self, expr: AstExpr) -> Result<ResultRegAndOps, Error> {
+        match expr {
+            AstExpr::FnCall { name, args } => unimplemented!(),
+            AstExpr::Str(s) => unimplemented!(),
+            AstExpr::Int(i) => self.build_expr_int(i),
+            AstExpr::Name(name) => unimplemented!(),
+            AstExpr::Boolean(b) => unimplemented!(),
+            AstExpr::Assignment { varname, expr } => unimplemented!(),
+            AstExpr::BinOp { lhs, op, rhs } => unimplemented!(),
+            AstExpr::If {
+                cond,
+                true_block,
+                false_block,
+            } => unimplemented!(),
+            AstExpr::ParenExpr(expr) => unimplemented!(),
+        }
+    }
+
+    fn build_expr_name(&mut self, name: &str) -> Result<ResultRegAndOps, Error> {
+        let addr = self.register_variable_name(name);
+        Ok((addr, vec![]))
+    }
+
+    fn build_expr_int(&mut self, val: i32) -> Result<ResultRegAndOps, Error> {
+        let out = self.next_free_reg_addr();
+        let op = Operation::LoadI { val, out };
+        Ok((out, vec![op]))
+    }
+
+    fn next_free_reg_addr(&mut self) -> usize {
+        let addr = self.next_free_reg_addr;
+        self.next_free_reg_addr += 1;
+        addr
+    }
+
+    fn register_variable_name(&mut self, name: &str) -> RegVal {
+        let addr = self.next_free_reg_addr();
+        self.variables.insert(name.into(), addr);
+        addr
+    }
+
+    fn get_variable_addr(&mut self, name: &str) -> Result<RegVal, Error> {
+        self.variables
+            .get(name.into())
+            .map(|v| *v)
+            .ok_or("Variable not found".into())
     }
 }
 
