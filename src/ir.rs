@@ -242,7 +242,7 @@ impl IRBuilder {
         expr: AstExpr,
     ) -> Result<OutRegAndOps, Error> {
         let (expr_reg, mut expr_ops) = self.build_expr(expr)?;
-        let out = self.register_variable_name(varname);
+        let out = self.get_variable_reg_addr(varname);
         let mut ops = vec![];
         ops.append(&mut expr_ops);
 
@@ -277,6 +277,27 @@ impl IRBuilder {
                     out,
                 });
             }
+            Op::Sub => {
+                ops.push(Operation::Sub {
+                    lhs: lhs_reg,
+                    rhs: rhs_reg,
+                    out,
+                });
+            }
+            Op::Div => {
+                ops.push(Operation::Div {
+                    lhs: lhs_reg,
+                    rhs: rhs_reg,
+                    out,
+                });
+            }
+            Op::Mul => {
+                ops.push(Operation::Mul {
+                    lhs: lhs_reg,
+                    rhs: rhs_reg,
+                    out,
+                });
+            }
             _ => unimplemented!(),
         };
 
@@ -284,7 +305,7 @@ impl IRBuilder {
     }
 
     fn build_expr_name(&mut self, name: &str) -> Result<OutRegAndOps, Error> {
-        let addr = self.register_variable_name(name);
+        let addr = self.get_variable_reg_addr(name);
         Ok((addr, vec![]))
     }
 
@@ -300,7 +321,7 @@ impl IRBuilder {
         addr
     }
 
-    fn register_variable_name(&mut self, name: &str) -> RegVal {
+    fn get_variable_reg_addr(&mut self, name: &str) -> RegVal {
         if self.variables.contains_key(name.into()) {
             self.variables[name.into()]
         } else {
@@ -308,13 +329,6 @@ impl IRBuilder {
             self.variables.insert(name.into(), addr);
             addr
         }
-    }
-
-    fn get_variable_addr(&mut self, name: &str) -> Result<RegVal, Error> {
-        self.variables
-            .get(name.into())
-            .map(|v| *v)
-            .ok_or("Variable not found".into())
     }
 }
 
