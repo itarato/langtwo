@@ -223,10 +223,10 @@ impl IRBuilder {
             AstExpr::FnCall { name, args } => unimplemented!(),
             AstExpr::Str(s) => unimplemented!(),
             AstExpr::Int(i) => self.build_expr_int(i),
-            AstExpr::Name(name) => unimplemented!(),
+            AstExpr::Name(name) => self.build_expr_name(name),
             AstExpr::Boolean(b) => unimplemented!(),
             AstExpr::Assignment { varname, expr } => unimplemented!(),
-            AstExpr::BinOp { lhs, op, rhs } => unimplemented!(),
+            AstExpr::BinOp { lhs, op, rhs } => self.build_expr_binop(*lhs, op, *rhs),
             AstExpr::If {
                 cond,
                 true_block,
@@ -234,6 +234,35 @@ impl IRBuilder {
             } => unimplemented!(),
             AstExpr::ParenExpr(expr) => unimplemented!(),
         }
+    }
+
+    fn build_expr_binop(
+        &mut self,
+        lhs: AstExpr,
+        op: Op,
+        rhs: AstExpr,
+    ) -> Result<ResultRegAndOps, Error> {
+        let (lhs_reg, mut lhs_ops) = self.build_expr(lhs)?;
+        let (rhs_reg, mut rhs_ops) = self.build_expr(rhs)?;
+
+        let mut ops = vec![];
+        ops.append(&mut lhs_ops);
+        ops.append(&mut rhs_ops);
+
+        let out = self.next_free_reg_addr();
+
+        match op {
+            Op::Add => {
+                ops.push(Operation::Add {
+                    lhs: lhs_reg,
+                    rhs: rhs_reg,
+                    out,
+                });
+            }
+            _ => unimplemented!(),
+        };
+
+        Ok((out, ops))
     }
 
     fn build_expr_name(&mut self, name: &str) -> Result<ResultRegAndOps, Error> {
@@ -267,6 +296,7 @@ impl IRBuilder {
     }
 }
 
+#[derive(Debug)]
 pub struct IR {
     instructions: Vec<Operation>,
 }
