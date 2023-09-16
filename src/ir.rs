@@ -207,6 +207,10 @@ impl IRBuilder {
         unimplemented!()
     }
 
+    fn build_block(&mut self, block: AstBlock) -> Result<Vec<Operation>, Error> {
+        unimplemented!()
+    }
+
     fn build_block_line(&mut self, line: AstBlockLine) -> Result<Vec<Operation>, Error> {
         match line {
             AstBlockLine::Expr(expr) => {
