@@ -3,12 +3,18 @@ use std::collections::HashMap;
 use crate::ast::*;
 use crate::shared::*;
 
-type RegVal = usize;
 type ImmVal = i32;
 // This might be a hack for now, but a simple auto-inc usize will do it.
 type Label = usize;
 type CondCode = Vec<CondResult>;
 type OutRegAndOps = (RegVal, Vec<Operation>);
+type RegAddr = usize;
+
+#[derive(Debug, PartialEq)]
+enum RegVal {
+    Reg(RegAddr),
+    RegArp,
+}
 
 #[derive(Debug, PartialEq)]
 pub enum CondResult {
@@ -22,6 +28,8 @@ pub enum CondResult {
 
 #[derive(Debug, PartialEq)]
 pub enum Operation {
+    // This is a hack during generation.
+    Label(Label),
     Add {
         lhs: RegVal,
         rhs: RegVal,
@@ -161,16 +169,34 @@ pub enum Operation {
     },
 }
 
-pub struct IRBuilder {
-    next_free_reg_addr: usize,
+struct Scope {
     variables: HashMap<String, RegVal>,
+    fn_out_regs: HashMap<String, RegVal>,
+}
+
+impl Scope {
+    fn new() -> Scope {
+        Scope {
+            variables: HashMap::new(),
+            fn_out_regs: HashMap::new(),
+        }
+    }
+}
+
+pub struct IRBuilder {
+    next_free_reg_addr: RegAddr,
+    next_free_label: Label,
+    fn_labels: HashMap<String, Label>,
+    frames: Vec<Scope>,
 }
 
 impl IRBuilder {
     pub fn new() -> IRBuilder {
         IRBuilder {
             next_free_reg_addr: 0,
-            variables: HashMap::new(),
+            next_free_label: 0,
+            fn_labels: HashMap::new(),
+            frames: vec![Scope::new()],
         }
     }
 
@@ -203,11 +229,30 @@ impl IRBuilder {
         args: Vec<&str>,
         block: AstBlock,
     ) -> Result<Vec<Operation>, Error> {
-        // Make a label to current (start-of-function) and last+1 (end-of-function).
-        unimplemented!()
+        let mut ops = vec![];
+
+        let fn_start_label = self.get_fn_label(name);
+        let fn_end_label = self.next_free_label();
+
+        // Need to declare: `Label(end-of(name))` (so we can jump from pre-function line to after the function)
+        ops.push(Operation::JumpI(fn_end_label));
+
+        // Need to declare: `Label(name)`
+        ops.push(Operation::Label(fn_start_label));
+
+        // We need to allocate Size(args) registers to work with `args` for names of `args`
+        // We need to render the ops for `block`
+        // TODO: register args and let the block know!
+        let (block_out_reg, mut block_ops) = self.build_block(block)?;
+        self.fn_out_regs.insert(name.into(), block_out_reg);
+        ops.append(&mut block_ops);
+
+        ops.push(Operation::Label(fn_end_label));
+
+        Ok(ops)
     }
 
-    fn build_block(&mut self, block: AstBlock) -> Result<Vec<Operation>, Error> {
+    fn build_block(&mut self, block: AstBlock) -> Result<OutRegAndOps, Error> {
         unimplemented!()
     }
 
@@ -271,7 +316,7 @@ impl IRBuilder {
         ops.append(&mut lhs_ops);
         ops.append(&mut rhs_ops);
 
-        let out = self.next_free_reg_addr();
+        let out = RegVal::Reg(self.next_free_reg_addr());
 
         match op {
             Op::Add => {
@@ -314,7 +359,7 @@ impl IRBuilder {
     }
 
     fn build_expr_int(&mut self, val: i32) -> Result<OutRegAndOps, Error> {
-        let out = self.next_free_reg_addr();
+        let out = RegVal::Reg(self.next_free_reg_addr());
         let op = Operation::LoadI { val, out };
         Ok((out, vec![op]))
     }
@@ -326,12 +371,38 @@ impl IRBuilder {
     }
 
     fn get_variable_reg_addr(&mut self, name: &str) -> RegVal {
-        if self.variables.contains_key(name.into()) {
-            self.variables[name.into()]
+        if self
+            .frames
+            .last()
+            .unwrap()
+            .variables
+            .contains_key(name.into())
+        {
+            self.frames.last().unwrap().variables[name.into()]
         } else {
-            let addr = self.next_free_reg_addr();
-            self.variables.insert(name.into(), addr);
+            let addr = RegVal::Reg(self.next_free_reg_addr());
+            self.frames
+                .last_mut()
+                .unwrap()
+                .variables
+                .insert(name.into(), addr);
             addr
+        }
+    }
+
+    fn next_free_label(&mut self) -> Label {
+        let label = self.next_free_label;
+        self.next_free_label += 1;
+        label
+    }
+
+    fn get_fn_label(&mut self, name: &str) -> Label {
+        if self.fn_labels.contains_key(name.into()) {
+            self.fn_labels[name.into()]
+        } else {
+            let label = self.next_free_label();
+            self.fn_labels.insert(name.into(), label);
+            label
         }
     }
 }
@@ -356,7 +427,10 @@ mod test {
     #[test]
     fn test_int() {
         assert_eq!(
-            vec![Operation::LoadI { val: 4, out: 0 }],
+            vec![Operation::LoadI {
+                val: 4,
+                out: RegVal::Reg(0)
+            }],
             ir_this("4;").instructions
         );
     }
@@ -365,12 +439,18 @@ mod test {
     fn test_int_binop_add() {
         assert_eq!(
             vec![
-                Operation::LoadI { val: 4, out: 0 },
-                Operation::LoadI { val: 1, out: 1 },
+                Operation::LoadI {
+                    val: 4,
+                    out: RegVal::Reg(0)
+                },
+                Operation::LoadI {
+                    val: 1,
+                    out: RegVal::Reg(1)
+                },
                 Operation::Add {
-                    lhs: 0,
-                    rhs: 1,
-                    out: 2
+                    lhs: RegVal::Reg(0),
+                    rhs: RegVal::Reg(1),
+                    out: RegVal::Reg(2)
                 },
             ],
             ir_this("4 + 1;").instructions
@@ -381,16 +461,28 @@ mod test {
     fn test_assignment() {
         assert_eq!(
             vec![
-                Operation::LoadI { val: 4, out: 0 }, // 4 -> r0
-                Operation::I2i { lhs: 0, rhs: 1 },   // r0 -> r1(a)
-                Operation::LoadI { val: 2, out: 2 }, // 2 -> r2
+                Operation::LoadI {
+                    val: 4,
+                    out: RegVal::Reg(0)
+                }, // 4 -> r0
+                Operation::I2i {
+                    lhs: RegVal::Reg(0),
+                    rhs: RegVal::Reg(1)
+                }, // r0 -> r1(a)
+                Operation::LoadI {
+                    val: 2,
+                    out: RegVal::Reg(2)
+                }, // 2 -> r2
                 Operation::Add {
                     // r1(a) + r2 -> r3
-                    lhs: 1,
-                    rhs: 2,
-                    out: 3
+                    lhs: RegVal::Reg(1),
+                    rhs: RegVal::Reg(2),
+                    out: RegVal::Reg(3)
                 },
-                Operation::I2i { lhs: 3, rhs: 1 }, // r3 -> r1(a)
+                Operation::I2i {
+                    lhs: RegVal::Reg(3),
+                    rhs: RegVal::Reg(1)
+                }, // r3 -> r1(a)
             ],
             ir_this("a = 4; a = a + 2;").instructions
         );
