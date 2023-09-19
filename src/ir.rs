@@ -3,17 +3,28 @@ use std::collections::HashMap;
 use crate::ast::*;
 use crate::shared::*;
 
+/**
+ * --------------
+ * return address <- ARP
+ * arg1           \
+ * ...             > args
+ * argn           /
+ * local var 1    \
+ * local var 2     > local variables
+ * ...              
+ */
+
 type ImmVal = i32;
 // This might be a hack for now, but a simple auto-inc usize will do it.
 type Label = usize;
 type CondCode = Vec<CondResult>;
-type OutRegAndOps = (RegVal, Vec<Operation>);
+type OutRegAndOps = (Reg, Vec<Operation>);
 type RegAddr = usize;
 
 #[derive(Debug, PartialEq)]
-enum RegVal {
-    Reg(RegAddr),
-    RegArp,
+enum Reg {
+    Global(RegAddr),
+    Arp(RegAddr), // ARP + offset.
 }
 
 #[derive(Debug, PartialEq)]
@@ -30,153 +41,159 @@ pub enum CondResult {
 pub enum Operation {
     // This is a hack during generation.
     Label(Label),
+    // This is not part of ILOC but without these it's not trivial how to make proc calls.
+    Call(Label),
+    Return,
+
     Add {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
     Sub {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
     Mul {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
     Div {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
 
     AddI {
-        lhs: RegVal,
+        lhs: Reg,
         rhs: ImmVal,
-        out: RegVal,
+        out: Reg,
     },
     SubI {
-        lhs: RegVal,
+        lhs: Reg,
         rhs: ImmVal,
-        out: RegVal,
+        out: Reg,
     },
     MulI {
-        lhs: RegVal,
+        lhs: Reg,
         rhs: ImmVal,
-        out: RegVal,
+        out: Reg,
     },
     DivI {
-        lhs: RegVal,
+        lhs: Reg,
         rhs: ImmVal,
-        out: RegVal,
+        out: Reg,
     },
 
     Load {
-        addr: RegVal,
-        out: RegVal,
+        addr: Reg,
+        out: Reg,
     },
     LoadAI {
-        addr: RegVal,
+        addr: Reg,
         offs: ImmVal,
-        out: RegVal,
+        out: Reg,
     },
     LoadAO {
-        addr: RegVal,
-        offs: RegVal,
-        out: RegVal,
+        addr: Reg,
+        offs: Reg,
+        out: Reg,
     },
     LoadI {
         val: ImmVal,
-        out: RegVal,
+        out: Reg,
     },
 
     Store {
-        reg: RegVal,
-        addr: RegVal,
+        reg: Reg,
+        addr: Reg,
     },
     StoreAI {
-        reg: RegVal,
-        addr: RegVal,
+        reg: Reg,
+        addr: Reg,
         offs: ImmVal,
     },
     StoreAO {
-        reg: RegVal,
-        addr: RegVal,
-        offs: RegVal,
+        reg: Reg,
+        addr: Reg,
+        offs: Reg,
     },
 
     I2i {
-        lhs: RegVal,
-        rhs: RegVal,
+        lhs: Reg,
+        rhs: Reg,
     },
 
     Ci2i {
-        cond: RegVal,
-        lhs: RegVal,
-        rhs: RegVal,
+        cond: Reg,
+        lhs: Reg,
+        rhs: Reg,
     },
 
     JumpI(Label),
-    Jump(RegVal),
+    Jump(Reg),
 
     Tbl {
-        reg: RegVal,
+        reg: Reg,
         label: Label,
     },
 
     CmpLt {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
     CmpLte {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
     CmpGt {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
     CmpGte {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
     CmpEq {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
     CmpNotEq {
-        lhs: RegVal,
-        rhs: RegVal,
-        out: RegVal,
+        lhs: Reg,
+        rhs: Reg,
+        out: Reg,
     },
 
     CondBranch {
-        cond: RegVal,
+        cond: Reg,
         label_true: Label,
         label_false: Label,
     },
 
     Comp {
-        lhs: RegVal,
-        rhs: RegVal,
+        lhs: Reg,
+        rhs: Reg,
         out: CondCode,
     },
 }
 
 struct Scope {
-    variables: HashMap<String, RegVal>,
-    fn_out_regs: HashMap<String, RegVal>,
+    next_free_reg_addr: RegAddr,
+    variables: HashMap<String, Reg>,
+    fn_out_regs: HashMap<String, Reg>,
 }
 
 impl Scope {
     fn new() -> Scope {
         Scope {
+            next_free_reg_addr: 0,
             variables: HashMap::new(),
             fn_out_regs: HashMap::new(),
         }
@@ -184,7 +201,6 @@ impl Scope {
 }
 
 pub struct IRBuilder {
-    next_free_reg_addr: RegAddr,
     next_free_label: Label,
     fn_labels: HashMap<String, Label>,
     frames: Vec<Scope>,
@@ -193,7 +209,6 @@ pub struct IRBuilder {
 impl IRBuilder {
     pub fn new() -> IRBuilder {
         IRBuilder {
-            next_free_reg_addr: 0,
             next_free_label: 0,
             fn_labels: HashMap::new(),
             frames: vec![Scope::new()],
@@ -242,8 +257,10 @@ impl IRBuilder {
 
         // We need to allocate Size(args) registers to work with `args` for names of `args`
         // We need to render the ops for `block`
-        // TODO: register args and let the block know!
-        let (block_out_reg, mut block_ops) = self.build_block(block)?;
+        let args_segment_size = args.len();
+        let ar_local_variable_start = args_segment_size + 1; // +1 is for the return address
+        let (block_out_reg, mut block_ops) =
+            self.build_block(block, Some(ar_local_variable_start))?;
         self.fn_out_regs.insert(name.into(), block_out_reg);
         ops.append(&mut block_ops);
 
@@ -252,7 +269,11 @@ impl IRBuilder {
         Ok(ops)
     }
 
-    fn build_block(&mut self, block: AstBlock) -> Result<OutRegAndOps, Error> {
+    fn build_block(
+        &mut self,
+        block: AstBlock,
+        arp_offs: Option<RegAddr>,
+    ) -> Result<OutRegAndOps, Error> {
         unimplemented!()
     }
 
@@ -316,7 +337,7 @@ impl IRBuilder {
         ops.append(&mut lhs_ops);
         ops.append(&mut rhs_ops);
 
-        let out = RegVal::Reg(self.next_free_reg_addr());
+        let out = Reg::Global(self.next_free_reg_addr());
 
         match op {
             Op::Add => {
@@ -359,18 +380,27 @@ impl IRBuilder {
     }
 
     fn build_expr_int(&mut self, val: i32) -> Result<OutRegAndOps, Error> {
-        let out = RegVal::Reg(self.next_free_reg_addr());
+        let out = Reg::Global(self.next_free_reg_addr());
         let op = Operation::LoadI { val, out };
         Ok((out, vec![op]))
     }
 
-    fn next_free_reg_addr(&mut self) -> usize {
-        let addr = self.next_free_reg_addr;
-        self.next_free_reg_addr += 1;
-        addr
+    fn next_free_reg_addr(&mut self) -> Reg {
+        if self.frames.len() < 1 {
+            panic!("Missing frames");
+        }
+
+        let addr = self.frames.last().unwrap().next_free_reg_addr;
+        self.frames.last_mut().unwrap().next_free_reg_addr += 1;
+
+        if self.frames.len() == 1 {
+            Reg::Global(addr)
+        } else {
+            Reg::Arp(addr)
+        }
     }
 
-    fn get_variable_reg_addr(&mut self, name: &str) -> RegVal {
+    fn get_variable_reg_addr(&mut self, name: &str) -> Reg {
         if self
             .frames
             .last()
@@ -380,7 +410,7 @@ impl IRBuilder {
         {
             self.frames.last().unwrap().variables[name.into()]
         } else {
-            let addr = RegVal::Reg(self.next_free_reg_addr());
+            let addr = Reg::Global(self.next_free_reg_addr());
             self.frames
                 .last_mut()
                 .unwrap()
@@ -429,7 +459,7 @@ mod test {
         assert_eq!(
             vec![Operation::LoadI {
                 val: 4,
-                out: RegVal::Reg(0)
+                out: Reg::Global(0)
             }],
             ir_this("4;").instructions
         );
@@ -441,16 +471,16 @@ mod test {
             vec![
                 Operation::LoadI {
                     val: 4,
-                    out: RegVal::Reg(0)
+                    out: Reg::Global(0)
                 },
                 Operation::LoadI {
                     val: 1,
-                    out: RegVal::Reg(1)
+                    out: Reg::Global(1)
                 },
                 Operation::Add {
-                    lhs: RegVal::Reg(0),
-                    rhs: RegVal::Reg(1),
-                    out: RegVal::Reg(2)
+                    lhs: Reg::Global(0),
+                    rhs: Reg::Global(1),
+                    out: Reg::Global(2)
                 },
             ],
             ir_this("4 + 1;").instructions
@@ -463,25 +493,25 @@ mod test {
             vec![
                 Operation::LoadI {
                     val: 4,
-                    out: RegVal::Reg(0)
+                    out: Reg::Global(0)
                 }, // 4 -> r0
                 Operation::I2i {
-                    lhs: RegVal::Reg(0),
-                    rhs: RegVal::Reg(1)
+                    lhs: Reg::Global(0),
+                    rhs: Reg::Global(1)
                 }, // r0 -> r1(a)
                 Operation::LoadI {
                     val: 2,
-                    out: RegVal::Reg(2)
+                    out: Reg::Global(2)
                 }, // 2 -> r2
                 Operation::Add {
                     // r1(a) + r2 -> r3
-                    lhs: RegVal::Reg(1),
-                    rhs: RegVal::Reg(2),
-                    out: RegVal::Reg(3)
+                    lhs: Reg::Global(1),
+                    rhs: Reg::Global(2),
+                    out: Reg::Global(3)
                 },
                 Operation::I2i {
-                    lhs: RegVal::Reg(3),
-                    rhs: RegVal::Reg(1)
+                    lhs: Reg::Global(3),
+                    rhs: Reg::Global(1)
                 }, // r3 -> r1(a)
             ],
             ir_this("a = 4; a = a + 2;").instructions
