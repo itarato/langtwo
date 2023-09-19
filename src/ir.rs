@@ -257,10 +257,21 @@ impl IRBuilder {
 
         // We need to allocate Size(args) registers to work with `args` for names of `args`
         // We need to render the ops for `block`
-        let args_segment_size = args.len();
-        let ar_local_variable_start = args_segment_size + 1; // +1 is for the return address
-        let (block_out_reg, mut block_ops) =
-            self.build_block(block, Some(ar_local_variable_start))?;
+
+        // Establish new frame.
+        self.frames.push(Scope::new());
+        // Save 1 slot for return ADDR.
+        self.next_free_reg_addr();
+        for arg in args {
+            // Save 1 slot for each argument.
+            self.get_variable_reg_addr(name);
+        }
+
+        let (block_out_reg, mut block_ops) = self.build_block(block)?;
+
+        self.frames.pop();
+
+        // TODO: figure out how can we exchange the return value from the frame to the callee.
         self.fn_out_regs.insert(name.into(), block_out_reg);
         ops.append(&mut block_ops);
 
@@ -269,11 +280,7 @@ impl IRBuilder {
         Ok(ops)
     }
 
-    fn build_block(
-        &mut self,
-        block: AstBlock,
-        arp_offs: Option<RegAddr>,
-    ) -> Result<OutRegAndOps, Error> {
+    fn build_block(&mut self, block: AstBlock) -> Result<OutRegAndOps, Error> {
         unimplemented!()
     }
 
@@ -337,7 +344,7 @@ impl IRBuilder {
         ops.append(&mut lhs_ops);
         ops.append(&mut rhs_ops);
 
-        let out = Reg::Global(self.next_free_reg_addr());
+        let out = self.next_free_reg_addr();
 
         match op {
             Op::Add => {
@@ -380,7 +387,7 @@ impl IRBuilder {
     }
 
     fn build_expr_int(&mut self, val: i32) -> Result<OutRegAndOps, Error> {
-        let out = Reg::Global(self.next_free_reg_addr());
+        let out = self.next_free_reg_addr();
         let op = Operation::LoadI { val, out };
         Ok((out, vec![op]))
     }
@@ -410,7 +417,7 @@ impl IRBuilder {
         {
             self.frames.last().unwrap().variables[name.into()]
         } else {
-            let addr = Reg::Global(self.next_free_reg_addr());
+            let addr = self.next_free_reg_addr();
             self.frames
                 .last_mut()
                 .unwrap()
