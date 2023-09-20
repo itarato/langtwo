@@ -4,7 +4,7 @@ pub type OutRegAndOps = (Reg, Vec<Operation>);
 pub type MaybeOutRegAndOps = (Option<Reg>, Vec<Operation>);
 pub type RegAddr = usize;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash, Eq)]
 pub enum Label {
     Named(String),
     Numbered(usize),
@@ -174,4 +174,9 @@ pub enum Operation {
         rhs: Reg,
         out: CondCode,
     },
+}
+
+#[derive(Debug)]
+pub struct IR {
+    pub instructions: Vec<Operation>,
 }

@@ -312,11 +312,6 @@ impl IRBuilder {
     }
 }
 
-#[derive(Debug)]
-pub struct IR {
-    pub instructions: Vec<Operation>,
-}
-
 #[cfg(test)]
 mod test {
     use crate::ir_builder::*;
