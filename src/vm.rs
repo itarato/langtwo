@@ -78,6 +78,30 @@ impl VM {
                     let rhs_val = self.reg_get(rhs);
                     self.reg_set(*out, lhs_val + rhs_val);
                 }
+                Operation::Sub { lhs, rhs, out } => {
+                    let lhs_val = self.reg_get(lhs);
+                    let rhs_val = self.reg_get(rhs);
+                    self.reg_set(*out, lhs_val - rhs_val);
+                }
+                Operation::Mul { lhs, rhs, out } => {
+                    let lhs_val = self.reg_get(lhs);
+                    let rhs_val = self.reg_get(rhs);
+                    self.reg_set(*out, lhs_val * rhs_val);
+                }
+                Operation::Div { lhs, rhs, out } => {
+                    let lhs_val = self.reg_get(lhs);
+                    let rhs_val = self.reg_get(rhs);
+                    self.reg_set(*out, lhs_val / rhs_val);
+                }
+                Operation::LoadI { val, out } => {
+                    self.reg_set(*out, *val);
+                }
+                Operation::I2i { lhs, rhs } => {
+                    self.reg_set(*rhs, self.reg_get(lhs));
+                }
+                Operation::JumpI(label) => {
+                    self.ip = self.label_map[label];
+                }
                 op => unimplemented!("Operation {:?} not implemented.", op),
             }
 
