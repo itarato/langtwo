@@ -15,11 +15,15 @@ use crate::shared::*;
  */
 
 type ImmVal = i32;
-// This might be a hack for now, but a simple auto-inc usize will do it.
-type Label = usize;
 type CondCode = Vec<CondResult>;
 type OutRegAndOps = (Reg, Vec<Operation>);
 type RegAddr = usize;
+
+#[derive(Debug, PartialEq)]
+enum Label {
+    Named(String),
+    Numbered(usize),
+}
 
 #[derive(Debug, PartialEq)]
 enum Reg {
@@ -44,6 +48,9 @@ pub enum Operation {
     // This is not part of ILOC but without these it's not trivial how to make proc calls.
     Call(Label),
     Return,
+    Push(Reg),
+    PushI(i32),
+    Pop(RegAddr),
 
     Add {
         lhs: Reg,
@@ -201,7 +208,7 @@ impl Scope {
 }
 
 pub struct IRBuilder {
-    next_free_label: Label,
+    next_free_label: usize,
     fn_labels: HashMap<String, Label>,
     frames: Vec<Scope>,
 }
@@ -318,11 +325,27 @@ impl IRBuilder {
         name: &str,
         args: Vec<AstExpr>,
     ) -> Result<OutRegAndOps, Error> {
-        // HOW TO GET A RETURN VALUE????
+        let mut ops = vec![];
 
-        /**
-         * call(name)
-         */
+        // let mut op_lists = vec![];
+        let mut op_returns = vec![];
+        for arg_expr in args {
+            let (arg_expr_reg, mut arg_expr_ops) = self.build_expr(arg_expr)?;
+            op_returns.push(arg_expr_reg);
+            // op_lists.push(arg_expr_ops);
+
+            ops.append(&mut arg_expr_ops);
+        }
+
+        for op_return in op_returns {
+            ops.push(Operation::Push(op_return));
+        }
+
+        // When executing `call` the return adds could automatically saved by the VM.
+
+        ops.push(Operation::Call(Label::Named(name.into())));
+
+        // Ok((???, ops))
         unimplemented!()
     }
 
@@ -443,7 +466,7 @@ impl IRBuilder {
     fn next_free_label(&mut self) -> Label {
         let label = self.next_free_label;
         self.next_free_label += 1;
-        label
+        Label::Numbered(label)
     }
 
     fn get_fn_label(&mut self, name: &str) -> Label {
