@@ -11,7 +11,7 @@ use crate::shared::*;
  * argn           /
  * local var 1    \
  * local var 2     > local variables
- * ...              
+ * ...
  */
 
 type ImmVal = i32;
@@ -311,6 +311,19 @@ impl IRBuilder {
             } => unimplemented!(),
             AstExpr::ParenExpr(expr) => unimplemented!(),
         }
+    }
+
+    fn build_expr_fn_call(
+        &mut self,
+        name: &str,
+        args: Vec<AstExpr>,
+    ) -> Result<OutRegAndOps, Error> {
+        // HOW TO GET A RETURN VALUE????
+
+        /**
+         * call(name)
+         */
+        unimplemented!()
     }
 
     fn build_expr_assignment(
