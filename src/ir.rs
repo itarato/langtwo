@@ -302,7 +302,7 @@ impl IRBuilder {
 
     fn build_expr(&mut self, expr: AstExpr) -> Result<OutRegAndOps, Error> {
         match expr {
-            AstExpr::FnCall { name, args } => unimplemented!(),
+            AstExpr::FnCall { name, args } => self.build_expr_fn_call(name, args),
             AstExpr::Str(s) => unimplemented!(),
             AstExpr::Int(i) => self.build_expr_int(i),
             AstExpr::Name(name) => self.build_expr_name(name),
