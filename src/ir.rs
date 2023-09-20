@@ -17,6 +17,7 @@ use crate::shared::*;
 type ImmVal = i32;
 type CondCode = Vec<CondResult>;
 type OutRegAndOps = (Reg, Vec<Operation>);
+type MaybeOutRegAndOps = (Option<Reg>, Vec<Operation>);
 type RegAddr = usize;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -237,7 +238,10 @@ impl IRBuilder {
     fn build_statement(&mut self, stmt: AstStatement) -> Result<Vec<Operation>, Error> {
         match stmt {
             AstStatement::FnDef { name, args, block } => self.build_fn_def(name, args, block),
-            AstStatement::BlockLine(line) => self.build_block_line(line),
+            AstStatement::BlockLine(line) => {
+                let (_out, ops) = self.build_block_line(line)?;
+                Ok(ops)
+            }
         }
     }
 
@@ -272,28 +276,40 @@ impl IRBuilder {
         }
 
         let (block_out_reg, mut block_ops) = self.build_block(block)?;
+        if block_out_reg.is_none() {
+            return Err("No expression ending for a block.".into());
+        }
 
         self.frames.pop();
 
         ops.append(&mut block_ops);
 
         // Save return value.
-        ops.push(Operation::Push(block_out_reg));
+        ops.push(Operation::Push(block_out_reg.unwrap()));
+        ops.push(Operation::Return);
 
         ops.push(Operation::Label(fn_end_label));
 
         Ok(ops)
     }
 
-    fn build_block(&mut self, block: AstBlock) -> Result<OutRegAndOps, Error> {
-        unimplemented!()
+    fn build_block(&mut self, block: AstBlock) -> Result<MaybeOutRegAndOps, Error> {
+        let mut ops = vec![];
+        let mut out: Option<Reg> = None;
+        for line in block.0 {
+            let (line_out, mut line_ops) = self.build_block_line(line)?;
+            ops.append(&mut line_ops);
+            out = line_out;
+        }
+
+        Ok((out, ops))
     }
 
-    fn build_block_line(&mut self, line: AstBlockLine) -> Result<Vec<Operation>, Error> {
+    fn build_block_line(&mut self, line: AstBlockLine) -> Result<MaybeOutRegAndOps, Error> {
         match line {
             AstBlockLine::Expr(expr) => {
-                let (_, ops) = self.build_expr(expr)?;
-                Ok(ops)
+                let (expr_reg, ops) = self.build_expr(expr)?;
+                Ok((Some(expr_reg), ops))
             }
             AstBlockLine::Loop(block) => unimplemented!(),
             AstBlockLine::Break => unimplemented!(),
@@ -552,6 +568,47 @@ mod test {
             ],
             ir_this("a = 4; a = a + 2;").instructions
         );
+    }
+
+    #[test]
+    fn test_fn_call() {
+        assert_eq!(
+            vec![
+                Operation::JumpI(Label::Numbered(0)),
+                Operation::Label(Label::Named("add".into())), // fn: add
+                Operation::Pop(Reg::Arp(0)),                  // pop -> rarp+0 (r1)
+                Operation::Pop(Reg::Arp(1)),                  // pop -> rarp+1 (r2)
+                Operation::Add {
+                    // add rarp+0 rarp+1 -> rarp+2
+                    lhs: Reg::Arp(0),
+                    rhs: Reg::Arp(1),
+                    out: Reg::Arp(2)
+                },
+                Operation::Push(Reg::Arp(2)), // push rarp+2
+                Operation::Return,            // return
+                Operation::Label(Label::Numbered(0)),
+                Operation::LoadI {
+                    // 5 -> r0(x)
+                    val: 5,
+                    out: Reg::Global(0)
+                },
+                Operation::I2i {
+                    // r0(x) -> r1
+                    lhs: Reg::Global(0),
+                    rhs: Reg::Global(1)
+                },
+                Operation::LoadI {
+                    // 7 -> r2
+                    val: 7,
+                    out: Reg::Global(2)
+                },
+                Operation::Push(Reg::Global(2)), // push r2
+                Operation::Push(Reg::Global(1)), // push r1
+                Operation::Call(Label::Named("add".into())), // call add
+                Operation::Pop(Reg::Global(3))   // after return / pop -> r2 (final result)
+            ],
+            ir_this("fn add(a, b) { a + b; } x = 5; add(x, 7);").instructions
+        )
     }
 
     fn ir_this(input: &'static str) -> IR {
