@@ -5,14 +5,16 @@ extern crate log;
 mod ast;
 mod interpreter;
 mod ir;
+mod ir_builder;
 mod lexer;
 mod parser;
 mod shared;
 mod source_reader;
+mod vm;
 
 use crate::ast::AstDump;
 use crate::interpreter::*;
-use crate::ir::*;
+use crate::ir_builder::*;
 use crate::lexer::*;
 use crate::parser::*;
 use crate::source_reader::*;
