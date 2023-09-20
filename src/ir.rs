@@ -19,13 +19,13 @@ type CondCode = Vec<CondResult>;
 type OutRegAndOps = (Reg, Vec<Operation>);
 type RegAddr = usize;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum Label {
     Named(String),
     Numbered(usize),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum Reg {
     Global(RegAddr),
     Arp(RegAddr), // ARP + offset.
@@ -50,7 +50,7 @@ pub enum Operation {
     Return,
     Push(Reg),
     PushI(i32),
-    Pop(RegAddr),
+    Pop(Reg),
 
     Add {
         lhs: Reg,
@@ -194,7 +194,6 @@ pub enum Operation {
 struct Scope {
     next_free_reg_addr: RegAddr,
     variables: HashMap<String, Reg>,
-    fn_out_regs: HashMap<String, Reg>,
 }
 
 impl Scope {
@@ -202,14 +201,12 @@ impl Scope {
         Scope {
             next_free_reg_addr: 0,
             variables: HashMap::new(),
-            fn_out_regs: HashMap::new(),
         }
     }
 }
 
 pub struct IRBuilder {
     next_free_label: usize,
-    fn_labels: HashMap<String, Label>,
     frames: Vec<Scope>,
 }
 
@@ -217,7 +214,6 @@ impl IRBuilder {
     pub fn new() -> IRBuilder {
         IRBuilder {
             next_free_label: 0,
-            fn_labels: HashMap::new(),
             frames: vec![Scope::new()],
         }
     }
@@ -253,11 +249,11 @@ impl IRBuilder {
     ) -> Result<Vec<Operation>, Error> {
         let mut ops = vec![];
 
-        let fn_start_label = self.get_fn_label(name);
+        let fn_start_label = Label::Named(name.into());
         let fn_end_label = self.next_free_label();
 
         // Need to declare: `Label(end-of(name))` (so we can jump from pre-function line to after the function)
-        ops.push(Operation::JumpI(fn_end_label));
+        ops.push(Operation::JumpI(fn_end_label.clone()));
 
         // Need to declare: `Label(name)`
         ops.push(Operation::Label(fn_start_label));
@@ -267,20 +263,22 @@ impl IRBuilder {
 
         // Establish new frame.
         self.frames.push(Scope::new());
-        // Save 1 slot for return ADDR.
-        self.next_free_reg_addr();
+
+        // Pop arguments.
+        // !!! DANGER !!! Currently there is no check that each push-ed value will be popped. RISK!
         for arg in args {
-            // Save 1 slot for each argument.
-            self.get_variable_reg_addr(name);
+            let arg_reg = self.get_variable_reg_addr(arg);
+            ops.push(Operation::Pop(arg_reg));
         }
 
         let (block_out_reg, mut block_ops) = self.build_block(block)?;
 
         self.frames.pop();
 
-        // TODO: figure out how can we exchange the return value from the frame to the callee.
-        self.fn_out_regs.insert(name.into(), block_out_reg);
         ops.append(&mut block_ops);
+
+        // Save return value.
+        ops.push(Operation::Push(block_out_reg));
 
         ops.push(Operation::Label(fn_end_label));
 
@@ -337,7 +335,10 @@ impl IRBuilder {
             ops.append(&mut arg_expr_ops);
         }
 
-        for op_return in op_returns {
+        // Reverse order - so `POP` inside the proceduce can read them in order.
+        // TODO: Add verification that we push exactly as much as the arg count. This we could do if
+        //       save some info about the function.
+        while let Some(op_return) = op_returns.pop() {
             ops.push(Operation::Push(op_return));
         }
 
@@ -345,8 +346,10 @@ impl IRBuilder {
 
         ops.push(Operation::Call(Label::Named(name.into())));
 
-        // Ok((???, ops))
-        unimplemented!()
+        let out = self.next_free_reg_addr();
+        ops.push(Operation::Pop(out));
+
+        Ok((out, ops))
     }
 
     fn build_expr_assignment(
@@ -467,16 +470,6 @@ impl IRBuilder {
         let label = self.next_free_label;
         self.next_free_label += 1;
         Label::Numbered(label)
-    }
-
-    fn get_fn_label(&mut self, name: &str) -> Label {
-        if self.fn_labels.contains_key(name.into()) {
-            self.fn_labels[name.into()]
-        } else {
-            let label = self.next_free_label();
-            self.fn_labels.insert(name.into(), label);
-            label
-        }
     }
 }
 
