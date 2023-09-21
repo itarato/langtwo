@@ -168,6 +168,31 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_nested_calls() {
+        assert_eq!(
+            Some(10),
+            vm_this(
+                r#"
+                fn powadd(a, b) {
+                    pow(a) + pow(b);
+                }
+                fn pow(a) {
+                    a * a;
+                }
+                fn half(x) {
+                    out = x / two();
+                    out;
+                }
+                fn two() {
+                    2;
+                }
+                half(powadd(2, 4));
+            "#
+            )
+        );
+    }
+
     fn vm_this(input: &'static str) -> Option<i32> {
         let reader = Box::new(StrReader::new(input));
         let lexemes = Lexer::new(reader).read_any().unwrap();
