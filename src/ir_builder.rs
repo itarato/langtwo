@@ -154,9 +154,18 @@ impl IRBuilder {
                 cond,
                 true_block,
                 false_block,
-            } => unimplemented!(),
+            } => self.build_expr_if(*cond, true_block, false_block),
             AstExpr::ParenExpr(expr) => unimplemented!(),
         }
+    }
+
+    fn build_expr_if(
+        &mut self,
+        cond: AstExpr,
+        true_block: AstBlock,
+        false_block: Option<AstBlock>,
+    ) -> Result<OutRegAndOps, Error> {
+        unimplemented!()
     }
 
     fn build_expr_fn_call(
