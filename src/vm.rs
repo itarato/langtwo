@@ -131,3 +131,50 @@ impl VM {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::ir_builder::*;
+    use crate::lexer::*;
+    use crate::parser::*;
+    use crate::source_reader::*;
+    use crate::vm::*;
+
+    #[test]
+    fn test_empty_program() {
+        assert_eq!(None, vm_this(""));
+    }
+
+    #[test]
+    fn test_expr_int() {
+        assert_eq!(Some(3), vm_this("3;"));
+    }
+
+    #[test]
+    fn test_expr_variable_assignment() {
+        assert_eq!(Some(2), vm_this("a = 5; a - 3;"));
+    }
+
+    #[test]
+    fn test_expr_variable_re_assignment() {
+        assert_eq!(Some(9), vm_this("a = 3; b = 1; b = 9; a = b; a;"));
+    }
+
+    #[test]
+    fn test_fn_call() {
+        assert_eq!(
+            Some(6),
+            vm_this("fn addfive(x) { x + 5; } x = 1; addfive(x);")
+        );
+    }
+
+    fn vm_this(input: &'static str) -> Option<i32> {
+        let reader = Box::new(StrReader::new(input));
+        let lexemes = Lexer::new(reader).read_any().unwrap();
+        let ast_root = Parser::new(lexemes.into()).build_ast().unwrap();
+        let ir = IRBuilder::new().build(ast_root).unwrap();
+        let mut vm = VM::new(ir);
+        vm.run();
+        vm.ir.return_reg.map(|reg| vm.reg_get(&reg))
+    }
+}
