@@ -102,6 +102,43 @@ impl VM {
                 Operation::JumpI(label) => {
                     self.ip = self.label_map[label];
                 }
+                Operation::CmpEq { lhs, rhs, out } => {
+                    let lhs_val = self.reg_get(lhs);
+                    let rhs_val = self.reg_get(rhs);
+                    self.reg_set(*out, if lhs_val == rhs_val { 1 } else { 0 });
+                }
+                Operation::CmpLt { lhs, rhs, out } => {
+                    let lhs_val = self.reg_get(lhs);
+                    let rhs_val = self.reg_get(rhs);
+                    self.reg_set(*out, if lhs_val < rhs_val { 1 } else { 0 });
+                }
+                Operation::CmpLte { lhs, rhs, out } => {
+                    let lhs_val = self.reg_get(lhs);
+                    let rhs_val = self.reg_get(rhs);
+                    self.reg_set(*out, if lhs_val <= rhs_val { 1 } else { 0 });
+                }
+                Operation::CmpGt { lhs, rhs, out } => {
+                    let lhs_val = self.reg_get(lhs);
+                    let rhs_val = self.reg_get(rhs);
+                    self.reg_set(*out, if lhs_val > rhs_val { 1 } else { 0 });
+                }
+                Operation::CmpGte { lhs, rhs, out } => {
+                    let lhs_val = self.reg_get(lhs);
+                    let rhs_val = self.reg_get(rhs);
+                    self.reg_set(*out, if lhs_val >= rhs_val { 1 } else { 0 });
+                }
+                Operation::CondBranch {
+                    cond,
+                    label_true,
+                    label_false,
+                } => {
+                    let val = self.reg_get(cond);
+                    self.ip = if val == 1 {
+                        self.label_map[label_true]
+                    } else {
+                        self.label_map[label_false]
+                    };
+                }
                 op => unimplemented!("Operation {:?} not implemented.", op),
             }
 
@@ -188,6 +225,67 @@ mod test {
                     2;
                 }
                 half(powadd(2, 4));
+            "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_if() {
+        assert_eq!(
+            Some(3),
+            vm_this(
+                r#"
+                if (1 < 2) {
+                    3;
+                } else {
+                    4;
+                }
+            "#
+            )
+        );
+
+        assert_eq!(
+            Some(4),
+            vm_this(
+                r#"
+                if (6 <= 3) {
+                    3;
+                } else {
+                    4;
+                }
+            "#
+            )
+        );
+
+        assert_eq!(
+            Some(0),
+            vm_this(
+                r#"
+                if (3 == 2) {
+                    3;
+                }
+            "#
+            )
+        );
+    }
+
+    #[test]
+    fn test_fib() {
+        assert_eq!(
+            Some(144),
+            vm_this(
+                r#"
+                fn fib(a, b, n) {
+                    sum = a + b;
+                    if (n > 1) {
+                        fib(b, sum, n - 1);
+                    } else {
+                        sum;
+                    }
+                }
+
+                fib(1, 1, 10);
             "#
             )
         );
