@@ -165,7 +165,59 @@ impl IRBuilder {
         true_block: AstBlock,
         false_block: Option<AstBlock>,
     ) -> Result<OutRegAndOps, Error> {
-        unimplemented!()
+        let out = self.next_free_reg_addr();
+        let mut ops = vec![];
+
+        let (cond_out, mut cond_ops) = self.build_expr(cond)?;
+        ops.append(&mut cond_ops);
+
+        let label_true = self.next_free_label();
+        let label_end = self.next_free_label();
+        let label_false = self.next_free_label();
+
+        ops.push(Operation::CondBranch {
+            cond: cond_out,
+            label_true: label_true.clone(),
+            label_false: label_false.clone(),
+        });
+
+        let (true_out, mut true_ops) = self.build_block(true_block)?;
+        ops.push(Operation::Label(label_true));
+        ops.append(&mut true_ops);
+        // Saving return value to reg - or set it to 0 for now.
+        if let Some(true_out) = true_out {
+            ops.push(Operation::I2i {
+                lhs: true_out,
+                rhs: out,
+            });
+        } else {
+            ops.push(Operation::LoadI { val: 0, out });
+        }
+        ops.push(Operation::JumpI(label_end.clone()));
+
+        ops.push(Operation::Label(label_false));
+
+        let false_out = if let Some(false_block) = false_block {
+            let (false_out, mut false_ops) = self.build_block(false_block)?;
+            ops.append(&mut false_ops);
+            false_out
+        } else {
+            None
+        };
+
+        if let Some(false_out) = false_out {
+            ops.push(Operation::I2i {
+                lhs: false_out,
+                rhs: out,
+            });
+        } else {
+            ops.push(Operation::LoadI { val: 0, out });
+        }
+        ops.push(Operation::JumpI(label_end.clone()));
+
+        ops.push(Operation::Label(label_end));
+
+        Ok((out, ops))
     }
 
     fn build_expr_fn_call(
@@ -236,34 +288,51 @@ impl IRBuilder {
         let out = self.next_free_reg_addr();
 
         match op {
-            Op::Add => {
-                ops.push(Operation::Add {
-                    lhs: lhs_reg,
-                    rhs: rhs_reg,
-                    out,
-                });
-            }
-            Op::Sub => {
-                ops.push(Operation::Sub {
-                    lhs: lhs_reg,
-                    rhs: rhs_reg,
-                    out,
-                });
-            }
-            Op::Div => {
-                ops.push(Operation::Div {
-                    lhs: lhs_reg,
-                    rhs: rhs_reg,
-                    out,
-                });
-            }
-            Op::Mul => {
-                ops.push(Operation::Mul {
-                    lhs: lhs_reg,
-                    rhs: rhs_reg,
-                    out,
-                });
-            }
+            Op::Add => ops.push(Operation::Add {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out,
+            }),
+            Op::Sub => ops.push(Operation::Sub {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out,
+            }),
+            Op::Div => ops.push(Operation::Div {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out,
+            }),
+            Op::Mul => ops.push(Operation::Mul {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out,
+            }),
+            Op::Eq => ops.push(Operation::CmpEq {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out: out,
+            }),
+            Op::Lt => ops.push(Operation::CmpLt {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out: out,
+            }),
+            Op::Lte => ops.push(Operation::CmpLte {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out: out,
+            }),
+            Op::Gt => ops.push(Operation::CmpGt {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out: out,
+            }),
+            Op::Gte => ops.push(Operation::CmpGte {
+                lhs: lhs_reg,
+                rhs: rhs_reg,
+                out: out,
+            }),
             _ => unimplemented!(),
         };
 
@@ -438,6 +507,129 @@ mod test {
             ],
             ir_this("fn add(a, b) { a + b; } x = 5; add(x, 7);").instructions
         )
+    }
+
+    #[test]
+    fn test_if_then() {
+        assert_eq!(
+            vec![
+                Operation::LoadI {
+                    // 1 -> r1
+                    val: 1,
+                    out: Reg::Global(1)
+                },
+                Operation::LoadI {
+                    // 2 -> r2
+                    val: 2,
+                    out: Reg::Global(2)
+                },
+                Operation::CmpLt {
+                    // 1 < 2 ? -> r3
+                    lhs: Reg::Global(1),
+                    rhs: Reg::Global(2),
+                    out: Reg::Global(3)
+                },
+                Operation::CondBranch {
+                    // r3 ? l0 : l2
+                    cond: Reg::Global(3),
+                    label_true: Label::Numbered(0),
+                    label_false: Label::Numbered(2)
+                },
+                Operation::Label(Label::Numbered(0)), // if true
+                Operation::LoadI {
+                    // 3 -> r4
+                    val: 3,
+                    out: Reg::Global(4)
+                },
+                Operation::I2i {
+                    // r4 -> r0
+                    lhs: Reg::Global(4),
+                    rhs: Reg::Global(0)
+                },
+                Operation::JumpI(Label::Numbered(1)), // jump to end
+                Operation::Label(Label::Numbered(2)), // if false
+                Operation::LoadI {
+                    // 0 -> r0
+                    val: 0,
+                    out: Reg::Global(0)
+                },
+                Operation::JumpI(Label::Numbered(1)), // jump to end
+                Operation::Label(Label::Numbered(1))  // end
+            ],
+            ir_this(
+                r#"
+                if (1 < 2) {
+                    3;
+                }
+            "#
+            )
+            .instructions
+        );
+    }
+
+    #[test]
+    fn test_if_then_else() {
+        assert_eq!(
+            vec![
+                Operation::LoadI {
+                    // 1 -> r1
+                    val: 1,
+                    out: Reg::Global(1)
+                },
+                Operation::LoadI {
+                    // 2 -> r2
+                    val: 2,
+                    out: Reg::Global(2)
+                },
+                Operation::CmpLt {
+                    // 1 < 2 ? -> r3
+                    lhs: Reg::Global(1),
+                    rhs: Reg::Global(2),
+                    out: Reg::Global(3)
+                },
+                Operation::CondBranch {
+                    // r3 ? l0 : l2
+                    cond: Reg::Global(3),
+                    label_true: Label::Numbered(0),
+                    label_false: Label::Numbered(2)
+                },
+                Operation::Label(Label::Numbered(0)), // if true
+                Operation::LoadI {
+                    // 3 -> r4
+                    val: 3,
+                    out: Reg::Global(4)
+                },
+                Operation::I2i {
+                    // r4 -> r0
+                    lhs: Reg::Global(4),
+                    rhs: Reg::Global(0)
+                },
+                Operation::JumpI(Label::Numbered(1)), // jump to end
+                Operation::Label(Label::Numbered(2)), // if false
+                Operation::LoadI {
+                    // 4 -> r5
+                    val: 4,
+                    out: Reg::Global(5)
+                },
+                Operation::I2i {
+                    // r5 -> r0
+                    lhs: Reg::Global(5),
+                    rhs: Reg::Global(0)
+                },
+                Operation::JumpI(Label::Numbered(1)), // jump to end
+                Operation::Label(Label::Numbered(1))  // end
+            ],
+            ir_this(
+                r#"
+                if (1 < 2) {
+                    3;
+                } else {
+                    4;
+                }
+            "#
+            )
+            .instructions
+        );
     }
 
     fn ir_this(input: &'static str) -> IR {
