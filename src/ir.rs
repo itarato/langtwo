@@ -179,4 +179,14 @@ pub enum Operation {
 #[derive(Debug)]
 pub struct IR {
     pub instructions: Vec<Operation>,
+    pub return_reg: Option<Reg>,
+}
+
+impl IR {
+    pub fn new(instructions: Vec<Operation>, return_reg: Option<Reg>) -> IR {
+        IR {
+            instructions,
+            return_reg,
+        }
+    }
 }

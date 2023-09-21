@@ -43,28 +43,30 @@ impl IRBuilder {
     }
 
     pub fn build(&mut self, ast: AstProgram) -> Result<IR, Error> {
-        let instructions = self.build_program(ast)?;
+        let (out, ops) = self.build_program(ast)?;
 
-        Ok(IR { instructions })
+        Ok(IR::new(ops, out))
     }
 
-    fn build_program(&mut self, ast: AstProgram) -> Result<Vec<Operation>, Error> {
+    fn build_program(&mut self, ast: AstProgram) -> Result<MaybeOutRegAndOps, Error> {
         let mut ins = vec![];
+        let mut out: Option<Reg> = None;
         for stmt in ast.statements {
-            let mut stmt_ins = self.build_statement(stmt)?;
+            let (stmt_out, mut stmt_ins) = self.build_statement(stmt)?;
             ins.append(&mut stmt_ins);
+            out = stmt_out;
         }
 
-        Ok(ins)
+        Ok((out, ins))
     }
 
-    fn build_statement(&mut self, stmt: AstStatement) -> Result<Vec<Operation>, Error> {
+    fn build_statement(&mut self, stmt: AstStatement) -> Result<MaybeOutRegAndOps, Error> {
         match stmt {
-            AstStatement::FnDef { name, args, block } => self.build_fn_def(name, args, block),
-            AstStatement::BlockLine(line) => {
-                let (_out, ops) = self.build_block_line(line)?;
-                Ok(ops)
+            AstStatement::FnDef { name, args, block } => {
+                let ops = self.build_fn_def(name, args, block)?;
+                Ok((None, ops))
             }
+            AstStatement::BlockLine(line) => self.build_block_line(line),
         }
     }
 
