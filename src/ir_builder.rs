@@ -32,6 +32,7 @@ impl Scope {
 pub struct IRBuilder {
     next_free_label: usize,
     frames: Vec<Scope>,
+    break_context_ends: Vec<Label>,
 }
 
 impl IRBuilder {
@@ -39,6 +40,7 @@ impl IRBuilder {
         IRBuilder {
             next_free_label: 0,
             frames: vec![Scope::new()],
+            break_context_ends: vec![],
         }
     }
 
@@ -136,9 +138,35 @@ impl IRBuilder {
                 let (expr_reg, ops) = self.build_expr(expr)?;
                 Ok((Some(expr_reg), ops))
             }
-            AstBlockLine::Loop(block) => unimplemented!(),
-            AstBlockLine::Break => unimplemented!(),
+            AstBlockLine::Loop(block) => self.build_loop(block).map(|ops| (None, ops)),
+            AstBlockLine::Break => self.build_break().map(|ops| (None, ops)),
         }
+    }
+
+    fn build_break(&mut self) -> Result<Vec<Operation>, Error> {
+        self.break_context_ends
+            .last()
+            .map(|label| vec![Operation::JumpI(label.clone())])
+            .ok_or("No context to break out from".into())
+    }
+
+    fn build_loop(&mut self, block: AstBlock) -> Result<Vec<Operation>, Error> {
+        let loop_start_label = self.next_free_label();
+        let loop_end_label = self.next_free_label();
+
+        self.break_context_ends.push(loop_end_label.clone());
+
+        let mut ops = vec![];
+        ops.push(Operation::Label(loop_start_label.clone()));
+
+        let (_, mut block_ops) = self.build_block(block)?;
+        ops.append(&mut block_ops);
+        ops.push(Operation::JumpI(loop_start_label));
+        ops.push(Operation::Label(loop_end_label));
+
+        self.break_context_ends.pop().expect("Missing label");
+
+        Ok(ops)
     }
 
     fn build_expr(&mut self, expr: AstExpr) -> Result<OutRegAndOps, Error> {
@@ -147,7 +175,7 @@ impl IRBuilder {
             AstExpr::Str(s) => unimplemented!(),
             AstExpr::Int(i) => self.build_expr_int(i),
             AstExpr::Name(name) => self.build_expr_name(name),
-            AstExpr::Boolean(b) => unimplemented!(),
+            AstExpr::Boolean(b) => self.build_expr_bool(b),
             AstExpr::Assignment { varname, expr } => self.build_expr_assignment(varname, *expr),
             AstExpr::BinOp { lhs, op, rhs } => self.build_expr_binop(*lhs, op, *rhs),
             AstExpr::If {
@@ -155,7 +183,7 @@ impl IRBuilder {
                 true_block,
                 false_block,
             } => self.build_expr_if(*cond, true_block, false_block),
-            AstExpr::ParenExpr(expr) => unimplemented!(),
+            AstExpr::ParenExpr(expr) => self.build_expr(*expr),
         }
     }
 
@@ -347,6 +375,15 @@ impl IRBuilder {
     fn build_expr_int(&mut self, val: i32) -> Result<OutRegAndOps, Error> {
         let out = self.next_free_reg_addr();
         let op = Operation::LoadI { val, out };
+        Ok((out, vec![op]))
+    }
+
+    fn build_expr_bool(&mut self, val: bool) -> Result<OutRegAndOps, Error> {
+        let out = self.next_free_reg_addr();
+        let op = Operation::LoadI {
+            val: if val { 1 } else { 0 },
+            out,
+        };
         Ok((out, vec![op]))
     }
 
@@ -629,6 +666,39 @@ mod test {
             "#
             )
             .instructions
+        );
+    }
+
+    #[test]
+    fn test_loop() {
+        assert_eq!(
+            vec![
+                Operation::Label(Label::Numbered(0)),
+                Operation::LoadI {
+                    val: 1,
+                    out: Reg::Global(0)
+                },
+                Operation::I2i {
+                    lhs: Reg::Global(0),
+                    rhs: Reg::Global(1)
+                },
+                Operation::JumpI(Label::Numbered(0)),
+                Operation::Label(Label::Numbered(1))
+            ],
+            ir_this("loop { a = 1; }").instructions
+        );
+    }
+
+    #[test]
+    fn test_break() {
+        assert_eq!(
+            vec![
+                Operation::Label(Label::Numbered(0)),
+                Operation::JumpI(Label::Numbered(1)),
+                Operation::JumpI(Label::Numbered(0)),
+                Operation::Label(Label::Numbered(1))
+            ],
+            ir_this("loop { break; }").instructions
         );
     }
 

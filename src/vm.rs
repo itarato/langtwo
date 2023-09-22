@@ -291,6 +291,14 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_loop_and_break() {
+        assert_eq!(
+            Some(10),
+            vm_this("a = 1; loop { if (a >= 10) { break; } a = a + 1; } a;")
+        );
+    }
+
     fn vm_this(input: &'static str) -> Option<i32> {
         let reader = Box::new(StrReader::new(input));
         let lexemes = Lexer::new(reader).read_any().unwrap();
