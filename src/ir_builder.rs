@@ -361,7 +361,25 @@ impl IRBuilder {
                 rhs: rhs_reg,
                 out: out,
             }),
-            _ => unimplemented!(),
+            Op::Mod => {
+                let div_out = self.next_free_reg_addr();
+                ops.push(Operation::Div {
+                    lhs: lhs_reg,
+                    rhs: rhs_reg,
+                    out: div_out,
+                });
+                let mul_out = self.next_free_reg_addr();
+                ops.push(Operation::Mul {
+                    lhs: rhs_reg,
+                    rhs: div_out,
+                    out: mul_out,
+                });
+                ops.push(Operation::Sub {
+                    lhs: lhs_reg,
+                    rhs: mul_out,
+                    out,
+                });
+            }
         };
 
         Ok((out, ops))
@@ -699,6 +717,38 @@ mod test {
                 Operation::Label(Label::Numbered(1))
             ],
             ir_this("loop { break; }").instructions
+        );
+    }
+
+    #[test]
+    fn test_expr_binop_mod() {
+        assert_eq!(
+            vec![
+                Operation::LoadI {
+                    val: 7,
+                    out: Reg::Global(0)
+                },
+                Operation::LoadI {
+                    val: 3,
+                    out: Reg::Global(1)
+                },
+                Operation::Div {
+                    lhs: Reg::Global(0),
+                    rhs: Reg::Global(1),
+                    out: Reg::Global(3)
+                },
+                Operation::Mul {
+                    lhs: Reg::Global(1),
+                    rhs: Reg::Global(3),
+                    out: Reg::Global(4)
+                },
+                Operation::Sub {
+                    lhs: Reg::Global(0),
+                    rhs: Reg::Global(4),
+                    out: Reg::Global(2)
+                }
+            ],
+            ir_this("7 % 3;").instructions
         );
     }
 

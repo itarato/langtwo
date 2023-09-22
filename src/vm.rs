@@ -299,6 +299,12 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_expr_binop_mod() {
+        assert_eq!(Some(3), vm_this("23 % 5;"));
+        assert_eq!(Some(0), vm_this("25 % 5;"));
+    }
+
     fn vm_this(input: &'static str) -> Option<i32> {
         let reader = Box::new(StrReader::new(input));
         let lexemes = Lexer::new(reader).read_any().unwrap();
