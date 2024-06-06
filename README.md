@@ -5,4 +5,4 @@ Toy compiler project implementing a fictional C-like language. Features:
 - hand rolled recursive descent parser
 - interpreter
 - vm
-- IR (incomplete)
+- IR
